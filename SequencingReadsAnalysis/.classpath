@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="src" path="retired"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/AnalysisCommon"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/htsjdk-2.1.0.jar" sourcepath="/samtools-htsjdk-3ffdb1f/src/java"/>
