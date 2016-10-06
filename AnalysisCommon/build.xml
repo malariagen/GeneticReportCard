@@ -8,8 +8,8 @@
     <property name="SequencingReadsAnalysis.location" value="../SequencingReadsAnalysis"/>
     <property name="ECLIPSE_HOME" value="D:/Program Files/Eclipse/jee-mars/eclipse/"/>
     <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.8"/>
-    <property name="source" value="1.8"/>
+    <property name="target" value="1.6"/>
+    <property name="source" value="1.6"/>
     <path id="AnalysisCommon.classpath">
         <pathelement location="bin"/>
         <pathelement location="lib/commons-logging-1.1.1.jar"/>

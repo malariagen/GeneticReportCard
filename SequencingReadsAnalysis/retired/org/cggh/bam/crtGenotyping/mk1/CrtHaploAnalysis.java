@@ -44,7 +44,7 @@ public class CrtHaploAnalysis {
 	
 	public void execute () throws AnalysisException, IOException  {
 		log.info("SAM files folder: "+samFolder);
-		String fileSuffix = "-crt-flankReads.sam";		
+		final String fileSuffix = "-crt-flankReads.sam";		
 		String[] fnames = samFolder.list(new FilenameFilter() {
 			    public boolean accept(File dir, String name) {
 			    	return name.endsWith(fileSuffix);
