@@ -153,7 +153,7 @@ public class TableOutput {
 	
 	public void appendValue (double value, NumberFormat formatter) throws AnalysisException {
 		appendFieldSeparator(sb);
-		sb.append(Double.isFinite(value) ? ((value == 0.0)? '0' : formatter.format(value)) : '-');
+		sb.append(Double.isNaN(value)  ? '-' : ((value == 0.0)? '0' : formatter.format(value)));
 	}
 	
 	public void close() throws AnalysisException {
