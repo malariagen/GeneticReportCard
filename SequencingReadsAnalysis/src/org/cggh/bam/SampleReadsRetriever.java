@@ -10,17 +10,19 @@ import java.util.regex.*;
 
 public class SampleReadsRetriever {
 	
-	private Locus[]     loci;
-	private SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
+	private Locus[]           loci;
+	private boolean           remapAllReads;
+	private SamReaderFactory  samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	
 	
 	/* ==========================================================
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleReadsRetriever (Locus[] loci) throws AnalysisException  {
+	public SampleReadsRetriever (BamConfig config) throws AnalysisException  {
 		// Parse configuration file
-		this.loci = loci;
+		this.loci = config.getLoci();
+		this.remapAllReads = config.getRemapAllReads();
 	}
 	
 
@@ -53,7 +55,7 @@ public class SampleReadsRetriever {
 			SAMRecord record = it.next();
 			
 			// If the read is ungapped, we can use the BAM start/end coords
-			if ((record.getCigarLength() == 1) && (record.getCigarString().endsWith("M"))) {
+			if (!remapAllReads && (record.getCigarLength() == 1) && (record.getCigarString().endsWith("M"))) {
 				MappedRead sr = new MappedRead(record, locus, record.getAlignmentStart(), MappedRead.MAPPED);
 				mappedReadsList.add(sr);
 			} else {

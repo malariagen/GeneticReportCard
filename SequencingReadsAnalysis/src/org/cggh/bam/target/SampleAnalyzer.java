@@ -10,21 +10,23 @@ import java.util.*;
 public class SampleAnalyzer {
 	
 	private Sample        sample;
+	private BamConfig     config;
 	private TargetLocus[] loci;
 	
 	/* ==========================================================
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleAnalyzer (TargetLocus[] loci, Sample sample) throws AnalysisException  {
-		this.loci = loci;
+	public SampleAnalyzer (BamConfig config, Sample sample) throws AnalysisException  {
+		this.config = config;		
+		this.loci = config.getLoci();
 		this.sample = sample;		
 	}
 
 	public SampleResults analyzeSample () throws AnalysisException, IOException  {
 		
 		// Read the reads from the SAM file
-		SampleReadsRetriever srr = new SampleReadsRetriever (loci);
+		SampleReadsRetriever srr = new SampleReadsRetriever (config);
 		ArrayList<MappedRead>[] mappedReadLists = srr.retrieveSampleReads(sample);
 		
 		// Analyze each locus

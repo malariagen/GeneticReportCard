@@ -6,7 +6,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public abstract class SampleTargetAnalysis extends SampleAnalysis {
+public abstract class SampleTargetAnalysis extends SampleLocusAnalysis {
 	
 	protected Target[]       allTargets;
 	protected String[]       allTargetNames;

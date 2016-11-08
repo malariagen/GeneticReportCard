@@ -1,6 +1,7 @@
 package org.cggh.bam.target.alleleClasses;
 
 import org.cggh.bam.*;
+import org.cggh.bam.sampleClass.SampleClassConfig;
 import org.cggh.bam.target.*;
 import org.cggh.bam.target.alleleClasses.AlleleClassTarget.*;
 import org.cggh.bam.target.alleleClasses.AlleleClassGenotype.*;
@@ -15,7 +16,8 @@ public class SampleAlleleClassAnalyzer {
 	
 	//private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
-	private Sample                sample;
+	private SampleClassConfig  config;
+	private Sample             sample;
 	private AlleleClassLocus[] loci;
 	
 	
@@ -23,8 +25,9 @@ public class SampleAlleleClassAnalyzer {
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleAlleleClassAnalyzer (AlleleClassLocus[] loci, Sample sample) throws AnalysisException  {
-		this.loci = loci;
+	public SampleAlleleClassAnalyzer (SampleClassConfig config, Sample sample) throws AnalysisException  {
+		this.config = config;		
+		this.loci = (AlleleClassLocus[])config.getLoci();
 		this.sample = sample;		
 	}
 
@@ -34,7 +37,7 @@ public class SampleAlleleClassAnalyzer {
 		// PART 1 - Reads analysis and Alignment
 		// **************************************
 		// Read the reads from the SAM file
-		SampleReadsRetriever srr = new SampleReadsRetriever (loci);
+		SampleReadsRetriever srr = new SampleReadsRetriever (config);
 		ArrayList<MappedRead>[] mappedReadLists = srr.retrieveSampleReads(sample);
 		
 		SampleAlleleClassLocusResult[] locusResults = new SampleAlleleClassLocusResult[loci.length];

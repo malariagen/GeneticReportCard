@@ -9,7 +9,7 @@ import java.util.*;
 
 public class ChromosomeMap {
 	
-	private static HashMap<String, Integer> chrIndexTable;
+	private static HashMap<String, Integer>       chrIndexTable;
 	private static HashMap<String, ChromosomeMap> chrMapTable;
 	
 	private static ChromosomeMap defaultInstance;
@@ -71,6 +71,10 @@ public class ChromosomeMap {
 		return map.getMappedChromosomeName (chrName);
 	}
 
+	public static ChromosomeMap getDefaultInstance () {
+		return defaultInstance;
+	}
+	
 	public static ChromosomeMap getInstance (String mapName) {
 		if ((mapName == null) || (mapName.equals("default"))) {
 			return defaultInstance;
@@ -86,6 +90,10 @@ public class ChromosomeMap {
 	private ChromosomeMap (String mapName, String[] chrNames) {
 		this.mapName = mapName;
 		this.chrNames = chrNames;
+	}
+	
+	public String[] getAllChromosomeNames() {
+		return chrNames;
 	}
 
 	public String getMappedChromosomeName (int chrIdx) {

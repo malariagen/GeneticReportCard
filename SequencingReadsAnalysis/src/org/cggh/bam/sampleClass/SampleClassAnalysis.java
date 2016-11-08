@@ -1,4 +1,4 @@
-package org.cggh.bam.species;
+package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.*;
 import org.cggh.bam.target.*;
@@ -14,17 +14,17 @@ import java.io.*;
 import java.util.*;
 
 
-public class SpeciesAnalysis extends SampleTargetAnalysis  {
+public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
-	private SpeciesConfig            config;
+	private SampleClassConfig            config;
 	
-	public SpeciesAnalysis (File configFile, File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException  {
+	public SampleClassAnalysis (File configFile, File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException  {
 		super (refFastaFile, chrMapFile, outRootFolder);
 
 		// Parse configuration file
-		config = new SpeciesConfig (configFile);
+		config = new SampleClassConfig (configFile);
 		registerLoci(config.getLoci());
 	}
 
@@ -35,11 +35,11 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 	public void analyzeSample (Sample sample) throws AnalysisException  {
 		log.info("Starting " + sample.getName());
 		try {
-			SampleAlleleClassAnalyzer analyzer = new SampleAlleleClassAnalyzer ((AlleleClassLocus[])loci, sample);
+			SampleAlleleClassAnalyzer analyzer = new SampleAlleleClassAnalyzer (config, sample);
 			SampleAlleleClassResults sr = analyzer.analyzeSample();
 			
 			// Analyze unlisted alleles: if they are very similar to listed ones, and can be 
-			// assigned to a species, add them to the relevant counter
+			// assigned to a sample class, add them to the relevant counter
 			analyzeUnlistedAlleles (sr);
 			
 			// Write out the results
@@ -53,18 +53,18 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 		log.info("Completed " + sample.getName());
 	}
 	
-	private static final String[] LISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","Species"};
+	private static final String[] LISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","SampleClass"};
 	private static final String[] UNLISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","Proportion","Closest","Diff"};
 	
 	/*
-	 * Write out the results for this sample into two files: one of counts of listed species-specific alleles,
+	 * Write out the results for this sample into two files: one of counts of listed sample class-specific alleles,
 	 * and one for alleles that were not listed.
 	 */
 	protected void outputSampleResults (SampleAlleleClassResults sr) throws AnalysisException, IOException  {
 		Sample sample = sr.getSample();
 		File outFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
 
-		TableOutput alleleSetOut = new TableOutput (outFolder, sample.getName()+".speciesAlleles.tab", LISTED_ALLELES_HEADERS, 64 * 1024);		
+		TableOutput alleleSetOut = new TableOutput (outFolder, sample.getName()+".classAlleles.tab", LISTED_ALLELES_HEADERS, 64 * 1024);		
 
 		SampleAlleleClassLocusResult[] locusResults = sr.getLocusResults();
 		for (int lIdx = 0; lIdx < locusResults.length; lIdx++) {
@@ -87,10 +87,10 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 					
 					String alleleSeq = alleles[aIdx].getName();
 					int count = alleleCounters[aIdx].getCount();
-					String speciesStr = (count > 1) ? alleleCounters[aIdx].getLabel() : "-";
+					String classStr = (count > 1) ? alleleCounters[aIdx].getLabel() : "-";
 					alleleSetOut.appendValue(alleleSeq);
 					alleleSetOut.appendValue(count);
-					alleleSetOut.appendValue(speciesStr);
+					alleleSetOut.appendValue(classStr);
 				}
 			}
 		}
@@ -118,25 +118,25 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 		// Write out unlisted alleles to file for all samples
 		writeUnlistedAllelesByTarget (samples, classReadTotals);
 		
-		// Get the species alleles for all loci
-		String[][] speciesAlleles = new String[samples.length][allTargets.length];
+		// Get the sample class alleles for all loci
+		String[][] classAlleles = new String[samples.length][allTargets.length];
 		for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
 			ClassAlleleCounts tCounts = targetCounts[tIdx];
 			for (int sIdx = 0; sIdx < samples.length; sIdx++) {
-				speciesAlleles[sIdx][tIdx] = tCounts.species[sIdx];
+				classAlleles[sIdx][tIdx] = tCounts.classes[sIdx];
 			}
 		}
 
 		// Process one class at a time to get the overall call for the sample
-		String[] sampleSpecies = callSamples (samples, (AlleleClassTarget[])allTargets, speciesAlleles);
+		String[] sampleClasses = callSamples (samples, allTargets, classAlleles);
 
 		// Write the calls out
-		String[] speciesHeaders = TextUtilities.mergeStringLists(new String[] {"Sample", "Species", "Consensus"}, allTargetNames);
-		TableOutput speciesOut = new TableOutput (outRootFolder, "AllSamples-AllTargets.species.tab", speciesHeaders, 64 * 1024);
+		String[] classHeaders = TextUtilities.mergeStringLists(new String[] {"Sample", "SampleClass", "Consensus"}, allTargetNames);
+		TableOutput classOut = new TableOutput (outRootFolder, "AllSamples-AllTargets.classes.tab", classHeaders, 64 * 1024);
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
-			speciesOut.newRow();
-			speciesOut.appendValue(samples[sIdx].getName());
-			String call = sampleSpecies[sIdx];
+			classOut.newRow();
+			classOut.appendValue(samples[sIdx].getName());
+			String call = sampleClasses[sIdx];
 			String cons;
 			if (call != null) {
 				cons = call.contains("*") ? "N" : "Y";
@@ -144,13 +144,13 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 				call = "-";
 				cons = "-";
 			}
-			speciesOut.appendValue(call);
-			speciesOut.appendValue(cons);
+			classOut.appendValue(call);
+			classOut.appendValue(cons);
 			for (int tIdx = 0; tIdx < allTargetNames.length; tIdx++) {
-				speciesOut.appendValue(speciesAlleles[sIdx][tIdx]);
+				classOut.appendValue(classAlleles[sIdx][tIdx]);
 			}
 		}
-		speciesOut.close();
+		classOut.close();
 	}
 	
 	
@@ -166,7 +166,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			Sample sample = samples[sIdx];
 			File sampleFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
-			File sampleFile = new File (sampleFolder, sample.getName()+".speciesAlleles.tab");
+			File sampleFile = new File (sampleFolder, sample.getName()+".classAlleles.tab");
 			if (!sampleFile.exists() || !sampleFile.canRead()) {
 				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
 				continue;
@@ -176,7 +176,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 			int targetFIdx      = tif.getFieldIndex("Target");
 			int alleleFldIdx    = tif.getFieldIndex("Allele");
 			int countFldIdx     = tif.getFieldIndex("Count");
-			int speciesFieldIdx = tif.getFieldIndex("Species");
+			int classFieldIdx   = tif.getFieldIndex("SampleClass");
 			try {
 				while (true) {
 					String[] inFields = tif.getNextValidLine();
@@ -188,11 +188,11 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 					int tIdx = 	getTargetIndex (tName);
 					String allele = inFields[alleleFldIdx];
 					int count = Integer.parseInt(inFields[countFldIdx]);
-					String speciesCall = inFields[speciesFieldIdx];
+					String classCall = inFields[classFieldIdx];
 					
 					ClassAlleleCounts tCounts = targetCounts[tIdx];
 					tCounts.setCount(sIdx, allele, count);
-					tCounts.addSpeciesCall(sIdx, "-".equals(speciesCall) ? null : speciesCall);
+					tCounts.addClassCall(sIdx, "-".equals(classCall) ? null : classCall);
 				}
 			} finally {
 				tif.close();
@@ -207,7 +207,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 		int                     targetIdx;
 		ClassAllele[]           alleles;
 		int[][]                 counts;
-		String[]                species;
+		String[]                classes;
 		HashMap<String,Integer> alleleIdxTable;
 		
 		public ClassAlleleCounts (int targetIdx, Sample[] samples) {
@@ -215,7 +215,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 			this.targetIdx = targetIdx;
 			this.alleles = ((AlleleClassTarget)allTargets[targetIdx]).getAlleles();
 			this.counts = new int[samples.length][alleles.length];
-			this.species = new String[samples.length];
+			this.classes = new String[samples.length];
 			alleleIdxTable = new HashMap<String,Integer>(alleles.length);
 			for (int i = 0; i < alleles.length; i++) {
 				alleleIdxTable.put(alleles[i].getName(), i);
@@ -227,17 +227,17 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 			counts[sampleIdx][alleleIdx] = count;
 		}
 		
-		public void addSpeciesCall (int sampleIdx, String speciesCall) {
-			if (speciesCall == null) {
+		public void addClassCall (int sampleIdx, String classCall) {
+			if (classCall == null) {
 				return;
 			}
-			String speciesStr = species[sampleIdx];
-			if (speciesStr == null) {
-				speciesStr = speciesCall;
+			String classStr = classes[sampleIdx];
+			if (classStr == null) {
+				classStr = classCall;
 			} else {
-				speciesStr += ","+speciesCall;
+				classStr += ","+classCall;
 			}
-			species[sampleIdx] = speciesStr;
+			classes[sampleIdx] = classStr;
 		}
 		
 		public int[] getTotalCounts () throws AnalysisException {
@@ -259,8 +259,8 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 				ClassAllele allele = alleles[aIdx];
 				alleleHeaders[aIdx+1] = allele.getName();
 			}
-			alleleHeaders[alleles.length+1] = "Species";
-			String filename = "AllSamples-"+allTargetNames[targetIdx]+".speciesAlleles.tab";
+			alleleHeaders[alleles.length+1] = "SampleClass";
+			String filename = "AllSamples-"+allTargetNames[targetIdx]+".classAlleles.tab";
 
 			TableOutput alleleSetOut = new TableOutput (outFolder, filename, alleleHeaders, 64 * 1024);
 			for (int sIdx = 0; sIdx < samples.length; sIdx++) {
@@ -269,7 +269,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 				for (int aIdx = 0; aIdx < alleles.length; aIdx++) {
 					alleleSetOut.appendValue(counts[sIdx][aIdx]);
 				}
-				alleleSetOut.appendValue(species[sIdx]);
+				alleleSetOut.appendValue(classes[sIdx]);
 			}
 			alleleSetOut.close();			
 		}
@@ -295,8 +295,8 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 				double totalReads = targetResult.getTotalReadCount();
 				
 				// Analyze unlisted alleles: if the allele is very similar to a listed allele (1 mismatch max),
-				// and more different from other species alleles, and it is in at least 10 reads, then merge it with
-				// the species with the most similar allele (add reads to the counter)
+				// and more different from other sample class alleles, and it is in at least 10 reads, then merge it with
+				// the class with the most similar allele (add reads to the counter)
 				ArrayList<UnlistedAllele> unlistedAlleleList = new ArrayList<UnlistedAllele>();
 				LabelCounter[] uCounters = targetResult.getUnlistedAlleleCounters();
 				for (int uIdx = 0; uIdx < uCounters.length; uIdx++) {
@@ -317,7 +317,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 	}
 
 	/*
-	 * Write out the results for this sample into two files: one of counts of listed species-specific alleles,
+	 * Write out the results for this sample into two files: one of counts of listed class-specific alleles,
 	 * and one for alleles that were not listed.
 	 */
 	protected void outputUnlistedAlleles (Sample sample, UnlistedAllele[][] allTargetUnlistedAlleles) throws AnalysisException, IOException  {
@@ -549,12 +549,12 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 	
 
 	/* ==========================================================
-	 * Species Calling from all targets
+	 * Sample Class Calling from all targets
 	 * ==========================================================
 	 */
-	private String[] callSamples (Sample[] samples, AlleleClassTarget[] allTargets, String[][] speciesAlleles) {
+	private String[] callSamples (Sample[] samples, Target[] allTargets, String[][] classAlleles) {
 		
-		// Get the list of species we're trying to find
+		// Get the list of sample classes we're trying to assign
 		String[] classes = config.getClasses();
 		HashMap<String,Integer> classesIdxTable = new HashMap<String,Integer>();
 		for (int cIdx = 0; cIdx < classes.length; cIdx++) {
@@ -562,25 +562,25 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 		}
 		
 		// Process one class at a time to get the overall call for the sample
-		String[] sampleSpecies = new String[samples.length];
+		String[] sampleClasses = new String[samples.length];
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			int[] specificAlleleCounts = new int[classes.length];
 			int[] promiscuousAllelesCounts = new int[classes.length];
 			int validCount = 0;
 			for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
-				String speciesValue = speciesAlleles[sIdx][tIdx];
-				if ((speciesValue == null) || speciesValue.equals("-")) {
+				String classValue = classAlleles[sIdx][tIdx];
+				if ((classValue == null) || classValue.equals("-")) {
 					continue;
 				}
 				validCount++;
-				String[] alleleLabels = speciesValue.split(",");
+				String[] alleleLabels = classValue.split(",");
 				for (String alleleLabel : alleleLabels) {
 					String[] alleleClasses = alleleLabel.split("\\|");
 					boolean isPromiscuous = alleleClasses.length > 1;
 					for (String alleleClass : alleleClasses) {
 						Integer idxObj = classesIdxTable.get(alleleClass);
 						if (idxObj == null) {
-							log.error("Allele '"+alleleClass+"' found at "+allTargets[tIdx]+" in sample "+ samples[sIdx].getName()+ " is not a valid class");
+							log.error("Allele '"+alleleClass+"' found at target "+allTargets[tIdx].getName()+" in sample "+ samples[sIdx].getName()+ " is not a valid class");
 						} else {
 							int idx = idxObj.intValue();
 							if (isPromiscuous) {
@@ -605,9 +605,9 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 					}
 				}
 			}
-			sampleSpecies[sIdx] = (call == null) ? "-" : call;
+			sampleClasses[sIdx] = (call == null) ? "-" : call;
 		}
-		return sampleSpecies;
+		return sampleClasses;
 	}
 	
 	
@@ -620,7 +620,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 		
 		public static void main(String[] args) {
 			if (args.length < 6) {
-				log.error("Usage: org.cggh.bam.species.SpeciesAnalysis$SingleSample <configFile> <sampleName> <bamFile> <chrMap> <refFasta> <chrMapFile> <rootFolder>");
+				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$SingleSample <configFile> <sampleName> <bamFile> <chrMap> <refFasta> <chrMapFile> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
@@ -632,7 +632,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 			File rootFolder = new File(args[6]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			
 			try {
-				SpeciesAnalysis task = new SpeciesAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
 				Sample sample = new Sample (sampleId, sampleBamFile, sampleChrMapName);
 				task.analyzeSample(sample);	
 			} catch (Exception e) {
@@ -650,7 +650,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 	public static class MultiSample {
 		public static void main(String[] args) {
 			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.species.SpeciesAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
+				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
@@ -662,7 +662,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 			int maxThreads = Integer.parseInt(System.getProperty("maxThreads","0"));
 			
 			try {	
-				SpeciesAnalysis task = new SpeciesAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
 				MultiSampleAnalysis multi = new MultiSampleAnalysis(sampleListFile, maxThreads);
 				multi.execute(task);
 				task.analyzeAllSampleResults(multi.getSamples());
@@ -681,7 +681,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 	public static class MergeResults {
 		public static void main(String[] args) {
 			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.species.SpeciesAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
+				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
@@ -692,7 +692,7 @@ public class SpeciesAnalysis extends SampleTargetAnalysis  {
 			
 			try {
 				Sample[] samples = new SampleList(sampleListFile, false).getSamples();
-				SpeciesAnalysis task = new SpeciesAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
 				task.analyzeAllSampleResults(samples);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

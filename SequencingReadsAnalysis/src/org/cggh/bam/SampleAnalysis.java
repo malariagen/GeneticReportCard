@@ -7,16 +7,12 @@ import org.cggh.common.textStore.*;
 import org.cggh.common.util.FileUtilities;
 import org.apache.commons.logging.*;
 import java.io.*;
-import java.util.*;
 
 
 public abstract class SampleAnalysis {
 	
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 
-	protected Locus[]  loci;
-	protected String[] locusNames;
-	protected HashMap<String,Integer> locusIdxTable = new HashMap<String,Integer>();
 	protected File outRootFolder;
 	
 	public SampleAnalysis (File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException  {
@@ -38,27 +34,7 @@ public abstract class SampleAnalysis {
 		}		
 	}
 
-	
-	protected void registerLoci (Locus[] loci) {
-		this.loci = loci;
-		this.locusNames = new String[loci.length];
-		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
-			String locusName = loci[lIdx].getName();
-			locusNames[lIdx] = locusName;
-			locusIdxTable.put(locusName, lIdx);
-		}
-	}
-	
-	protected int getLocusIndex (String locusName) {
-		Integer idxObj = locusIdxTable.get(locusName);
-		if (idxObj == null) {
-			return -1;
-		}
-		return idxObj.intValue();
-	}
 
-	
-	
 	public abstract void analyzeSample(Sample sample) throws AnalysisException;
 	
 	/* *************************************************************************

@@ -16,7 +16,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
-	private GrcConfig     config;
+	private GrcConfig config;
 	
 	public GrcAnalysis (File configFile, File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException  {
 		super (refFastaFile, chrMapFile, outRootFolder);
@@ -33,7 +33,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	public void analyzeSample (Sample sample) throws AnalysisException  {
 		log.info("Starting " + sample.getName());
 		try {
-			SampleAnalyzer analyzer = new SampleAnalyzer ((TargetLocus[])loci, sample);
+			SampleAnalyzer analyzer = new SampleAnalyzer (config, sample);
 			SampleResults sr = analyzer.analyzeSample();
 			
 			// Write out the results
