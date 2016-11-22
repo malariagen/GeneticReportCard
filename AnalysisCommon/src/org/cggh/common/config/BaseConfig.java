@@ -11,12 +11,16 @@ public class BaseConfig {
 
 	protected Properties configProperties;
 	
-	public BaseConfig (File configFile) throws AnalysisException  {
+	protected BaseConfig (File configFile) throws AnalysisException  {
 		this(loadConfigProperties(configFile));
 	}
 
-	public BaseConfig (Properties configProperties) {
+	protected BaseConfig (Properties configProperties) {
 		this.configProperties = configProperties;
+	}
+
+	protected BaseConfig () {
+		this.configProperties = new Properties();
 	}
 
 	public Properties getConfigProperties() {

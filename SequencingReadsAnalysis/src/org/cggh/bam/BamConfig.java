@@ -10,11 +10,18 @@ public abstract class BamConfig extends BaseConfig {
 	protected String  propPrefix;
 	protected TargetLocus[] loci;
 	protected boolean remapAllReads;
+	protected boolean skipUnmappedReadsAnalysis;
 	
 	public BamConfig (File configFile, String propPrefix) throws AnalysisException  {
 		super(configFile);
 		this.propPrefix = propPrefix;
 		loci = parseLocusConfig ();
+		skipUnmappedReadsAnalysis = true;
+		for (int i = 0; i < loci.length; i++) {
+			if (loci[i].getAnalyzeUnmappedReads()) {
+				skipUnmappedReadsAnalysis = false;
+			}
+		}
 		remapAllReads = this.getBooleanProperty(propPrefix+"remapAllReads", false);	
 	}
 	
@@ -26,5 +33,9 @@ public abstract class BamConfig extends BaseConfig {
 	
 	public boolean getRemapAllReads() {
 		return remapAllReads;
+	}
+	
+	public boolean getSkipUnmappedReadsAnalysis() {
+		return skipUnmappedReadsAnalysis;
 	}
 }
