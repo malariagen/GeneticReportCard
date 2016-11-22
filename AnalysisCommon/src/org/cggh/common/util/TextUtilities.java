@@ -95,6 +95,12 @@ public class TextUtilities {
 		return (result);
 	}
 
+    public static String reverse (String s) {
+    	StringBuffer sb = new StringBuffer(s);
+    	sb.reverse();
+		return sb.toString();
+	}
+
     public static String normalizeWhitespace (String s) {
 		return processWhitespace(s, false);
 	}
