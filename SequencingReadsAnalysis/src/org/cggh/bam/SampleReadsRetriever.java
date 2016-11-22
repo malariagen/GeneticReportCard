@@ -12,6 +12,7 @@ public class SampleReadsRetriever {
 	
 	private Locus[]           loci;
 	private boolean           remapAllReads;
+	private boolean           skipUnmappedReadsAnalysis;
 	private SamReaderFactory  samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	
 	
@@ -23,8 +24,8 @@ public class SampleReadsRetriever {
 		// Parse configuration file
 		this.loci = config.getLoci();
 		this.remapAllReads = config.getRemapAllReads();
+		this.skipUnmappedReadsAnalysis = config.getSkipUnmappedReadsAnalysis();
 	}
-	
 
 	@SuppressWarnings("unchecked")
 	public ArrayList<MappedRead>[] retrieveSampleReads (Sample sample) throws AnalysisException, IOException  {
@@ -38,7 +39,9 @@ public class SampleReadsRetriever {
 		}
 		
 		// Then search unmapped reads (this does not necessarily find them all, but will do)
-		getUnmappedLocusReads (sample, loci, mappedReadLists);
+		if (!skipUnmappedReadsAnalysis) {
+			getUnmappedLocusReads (sample, loci, mappedReadLists);
+		}
 		
 		return mappedReadLists;
 	}
@@ -86,6 +89,9 @@ public class SampleReadsRetriever {
 		boolean matched = false;
 		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
 			Locus locus = loci[lIdx];
+			if (!locus.getAnalyzeUnmappedReads()) {
+				continue;
+			}
 			ArrayList<MappedRead> mappedReadList = mappedReadLists[lIdx];
 			if (matchUnmappedReadAtLocus (record, locus, mappedReadList, MappedRead.UNMAPPED)) {
 				matched = true;  // The same unmapped read may have anchors that match multiple loci, so do not give up after finding a match

@@ -200,7 +200,6 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			int locusFIdx       = tif.getFieldIndex("Locus");
 			int targetFIdx      = tif.getFieldIndex("Target");
 			int alleleFldIdx    = tif.getFieldIndex("Allele");
-			//int aminoFldIdx     = tif.getFieldIndex("Amino");
 			int countFldIdx     = tif.getFieldIndex("Count");
 			try {
 				while (true) {

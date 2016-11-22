@@ -12,20 +12,22 @@ public class Locus {
 	String       readSearchIntervalCoords;
 	GenomeRegion readSearchInterval;
 	Anchor[]     anchors;
+	boolean      analyzeUnmappedReads;
 
-	public Locus(String name, String readSearchIntervalCoords, Anchor[] anchors) throws AnalysisException {
+	public Locus(String name, String readSearchIntervalCoords, Anchor[] anchors, boolean analyzeUnmappedReads) throws AnalysisException {
 		this.name = name;
 		this.readSearchIntervalCoords = readSearchIntervalCoords;
 		this.readSearchInterval = GenomeRegion.parseRegion(readSearchIntervalCoords);
 		this.anchors = anchors;
+		this.analyzeUnmappedReads = analyzeUnmappedReads;
 	}
 
 	public String getName() {
 		return name;
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	public String getChromosome() {
+		return readSearchInterval.getChromosome();
 	}
 
 	public String getReadSearchIntervalCoords() {
@@ -36,21 +38,27 @@ public class Locus {
 		return readSearchInterval;
 	}
 
-	public void setReadSearchInterval(GenomeRegion readSearchInterval) {
-		this.readSearchInterval = readSearchInterval;
-	}
-
-	public String getChromosome() {
-		return readSearchInterval.getChromosome();
-	}
-
 	public Anchor[] getAnchors() {
 		return anchors;
+	}
+
+	public boolean getAnalyzeUnmappedReads() {
+		return analyzeUnmappedReads;
+	}
+
+	/*
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public void setReadSearchInterval(GenomeRegion readSearchInterval) {
+		this.readSearchInterval = readSearchInterval;
 	}
 
 	public void setAnchors(Anchor[] anchors) {
 		this.anchors = anchors;
 	}
+	*/
 	
 	public static Locus[] parseLocusConfig(Properties configProperties, String propPrefix) throws AnalysisException {
 		return new LocusConfig(configProperties).parseLoci(propPrefix);
@@ -79,7 +87,8 @@ public class Locus {
 					String[] parts = anchorsStr[idx].split("@");
 					anchors[idx] = new Anchor(chr+":"+parts[0], parts[1]);
 				}
-				loci[i] = new Locus(locusNames[i], regionStr, anchors);
+				boolean analyzeUnmappedReads = this.getBooleanProperty(locusPrefix+".analyzeUnmappedReads", false);
+				loci[i] = new Locus(locusNames[i], regionStr, anchors, analyzeUnmappedReads);
 			}
 			return loci;
 		}

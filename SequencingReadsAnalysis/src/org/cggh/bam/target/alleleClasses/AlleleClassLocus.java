@@ -11,8 +11,8 @@ public class AlleleClassLocus extends TargetLocus {
 
 	private AlleleClassTarget[] targets;
 	
-	public AlleleClassLocus(String name, String readSearchIntervalCoords, Anchor[] anchors, AlleleClassTarget[] targets) throws AnalysisException {
-		super (name, readSearchIntervalCoords, anchors, targets);
+	public AlleleClassLocus(String name, String readSearchIntervalCoords, Anchor[] anchors, boolean analyzeUnmappedReads, AlleleClassTarget[] targets) throws AnalysisException {
+		super (name, readSearchIntervalCoords, anchors, analyzeUnmappedReads, targets);
 		this.targets = targets;
 	}
 
@@ -40,7 +40,7 @@ public class AlleleClassLocus extends TargetLocus {
 				String locusChromosome = baseLoci[lIdx].getChromosome();
 				AlleleClassTarget[] targets = AlleleClassTarget.parseTargetConfig(configProperties, propLocusPrefix, locusChromosome);
 				Locus baseLocus = baseLoci[lIdx];
-				loci[lIdx] = new AlleleClassLocus(baseLocus.getName(), baseLocus.getReadSearchIntervalCoords(), baseLocus.getAnchors(), targets);
+				loci[lIdx] = new AlleleClassLocus(baseLocus.getName(), baseLocus.getReadSearchIntervalCoords(), baseLocus.getAnchors(), baseLocus.getAnalyzeUnmappedReads(), targets);
 			}
 			return loci;
 		}

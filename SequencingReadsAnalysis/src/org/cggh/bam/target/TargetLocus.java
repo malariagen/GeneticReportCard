@@ -9,8 +9,8 @@ public class TargetLocus extends Locus {
 
 	private Target[] targets;
 	
-	public TargetLocus(String name, String readSearchIntervalCoords, Anchor[] anchors, Target[] targets) throws AnalysisException {
-		super (name, readSearchIntervalCoords, anchors);
+	public TargetLocus(String name, String readSearchIntervalCoords, Anchor[] anchors, boolean analyzeUnmappedReads, Target[] targets) throws AnalysisException {
+		super (name, readSearchIntervalCoords, anchors, analyzeUnmappedReads);
 		this.targets = targets;
 	}
 
@@ -38,7 +38,7 @@ public class TargetLocus extends Locus {
 				String locusChromosome = baseLoci[lIdx].getChromosome();
 				Target[] targets = Target.parseTargetConfig(configProperties, propLocusPrefix, locusChromosome);
 				Locus baseLocus = baseLoci[lIdx];
-				loci[lIdx] = new TargetLocus(baseLocus.getName(), baseLocus.getReadSearchIntervalCoords(), baseLocus.getAnchors(), targets);
+				loci[lIdx] = new TargetLocus(baseLocus.getName(), baseLocus.getReadSearchIntervalCoords(), baseLocus.getAnchors(), baseLocus.getAnalyzeUnmappedReads(), targets);
 			}
 			return loci;
 		}
