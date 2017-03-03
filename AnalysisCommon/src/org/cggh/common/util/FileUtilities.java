@@ -185,4 +185,17 @@ public class FileUtilities {
 		String[] entries = entryList.toArray(new String[entryList.size()]);
 		return entries;
 	}
+    
+    public static File[] readFileListFromFile (File inputFile) throws AnalysisException {
+        return readFileListFromFile (inputFile, false);
+    }
+   
+    public static File[] readFileListFromFile (File inputFile, boolean errorOnBlankEntry) throws AnalysisException {
+    	String[] filenames = readStringListFromFile (inputFile, errorOnBlankEntry);
+    	File[] files = new File[filenames.length];
+    	for (int i = 0; i < filenames.length; i++) {
+    		files[i] = new File(filenames[i]);
+    	}
+    	return files;
+    }
 }

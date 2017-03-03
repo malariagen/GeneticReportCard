@@ -12,6 +12,7 @@ public class Statistics {
 	private double   stdev;
 	private int      count;
 	private double   median;
+	private double   coefVar;
 	private double   quartile25;
 	private double   quartile75;
 	private double   quantile10;
@@ -46,7 +47,7 @@ public class Statistics {
 	private void invalidate() {
 		count = 0;
 		min = max = Double.NaN;
-		mean = median = stdev = Double.NaN;
+		mean = median = stdev = coefVar = Double.NaN;
 		sum = Double.NaN;
 		min = Double.NaN;
 		min = Double.NaN;
@@ -93,8 +94,10 @@ public class Statistics {
 				SumDSquare += (d * d);
 			}
 			stdev = Math.sqrt(SumDSquare / (count - 1));			
+			coefVar = stdev / mean;			
 		} else {
 			stdev = 0.0;			
+			coefVar = 0.0;			
 		}
 		
 		int medIdx1 = (set.length - 1) / 2;
@@ -137,6 +140,10 @@ public class Statistics {
 
 	public double getStdev() {
 		return stdev;
+	}
+	
+	public double getCoeffOfVariation() {
+		return coefVar;
 	}
 	
 	public double getSum() {

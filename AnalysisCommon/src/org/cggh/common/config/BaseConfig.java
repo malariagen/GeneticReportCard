@@ -11,16 +11,12 @@ public class BaseConfig {
 
 	protected Properties configProperties;
 	
-	protected BaseConfig (File configFile) throws AnalysisException  {
+	public BaseConfig (File configFile) throws AnalysisException  {
 		this(loadConfigProperties(configFile));
 	}
 
-	protected BaseConfig (Properties configProperties) {
+	public BaseConfig (Properties configProperties) {
 		this.configProperties = configProperties;
-	}
-
-	protected BaseConfig () {
-		this.configProperties = new Properties();
 	}
 
 	public Properties getConfigProperties() {
@@ -219,12 +215,29 @@ public class BaseConfig {
 	}
 	
 	protected static String getPrintableString(int[] intList) {
+		if (intList == null) {
+			return "null";
+		}
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < intList.length; i++) {
 			if (i > 0) {
 				sb.append(',');
 			}
 			sb.append(intList[i]);
+		}
+		return sb.toString();
+	}
+	
+	protected static String getPrintableString(double[] dblList) {
+		if (dblList == null) {
+			return "null";
+		}
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < dblList.length; i++) {
+			if (i > 0) {
+				sb.append(',');
+			}
+			sb.append(dblList[i]);
 		}
 		return sb.toString();
 	}
