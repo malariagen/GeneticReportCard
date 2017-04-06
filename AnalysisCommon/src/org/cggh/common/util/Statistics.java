@@ -21,8 +21,12 @@ public class Statistics {
 	private double   quantile95;
 	
 	public Statistics (double[] inputValues) {
-		int len = inputValues.length;
-		double[] set = Arrays.copyOf(inputValues, len);
+		double[] set = Arrays.copyOf(inputValues, inputValues.length);
+		processValues(set);
+	}
+	
+	public Statistics (double[] inputValues, int fromIdx, int toIdx) {
+		double[] set = Arrays.copyOfRange(inputValues, fromIdx, toIdx);
 		processValues(set);
 	}
 	

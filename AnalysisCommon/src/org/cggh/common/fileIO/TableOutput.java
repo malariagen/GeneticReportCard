@@ -128,7 +128,11 @@ public class TableOutput {
 	
 	public void appendValue (String value) throws AnalysisException {
 		appendFieldSeparator(sb);
-		sb.append((value == null) ? '-' : value);
+		if (value == null) {
+			sb.append('-');
+		} else {
+			sb.append(value);
+		}
 	}
 	
 	public void appendMultipleValues (String[] values) throws AnalysisException {
@@ -139,12 +143,22 @@ public class TableOutput {
 	
 	public void appendValue (int value) throws AnalysisException {
 		appendFieldSeparator(sb);
-		sb.append(value);
+		if (value == Integer.MIN_VALUE) {
+			sb.append('-');
+		} else if (value == 0) {
+			sb.append('0');
+		} else {
+			sb.append(value);
+		}
 	}
 	
 	public void appendValue (char value) throws AnalysisException {
 		appendFieldSeparator(sb);
-		sb.append((char)value);
+		if (value == Character.MIN_VALUE) {
+			sb.append('-');
+		} else {
+			sb.append(value);
+		}
 	}
 	
 	public void appendValue (double value) throws AnalysisException {
@@ -153,7 +167,13 @@ public class TableOutput {
 	
 	public void appendValue (double value, NumberFormat formatter) throws AnalysisException {
 		appendFieldSeparator(sb);
-		sb.append(Double.isNaN(value)  ? '-' : ((value == 0.0)? '0' : formatter.format(value)));
+		if (Double.isNaN(value)) {
+			sb.append('-');
+		} else if (value == 0.0) {
+			sb.append('0');
+		} else {
+			sb.append(formatter.format(value));
+		}
 	}
 	
 	public void close() throws AnalysisException {
