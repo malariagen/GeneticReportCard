@@ -16,6 +16,10 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	
 	private static Log log = LogFactory.getLog((String)ClassUtilities.getCurrentClassName());
 	
+	public static final int MIN_CALL_COVERAGE = 5;
+	public static final int MIN_ALLELE_COVERAGE = 5;
+	public static final double MAX_READ_DIRECTION_PROPORTION = 0.85;
+	
 	public static final int MIN_PHRED_SCORE = 20;
 	
 	public static final int CALL_MISSING = 1;
@@ -23,61 +27,147 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	public static final int CALL_MUTANT = 3;
 	public static final int CALL_HET = 4;
 	
-	private HeteroallelicConfig config;
-	private SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
-
-	private static final String[] CALL_FILE_HEADERS = new String[] { "Sample", "Locus", "Call", "Mutation", "MedianReadCount", "MeanReadCount" };
-	private static final String[] MULTI_MUTANT_FILE_HEADERS = new String[] { "Sample", "Locus", "Alleles","ReadCount" };
+	private HeteroallelicConfig   config;
+	private SamReaderFactory      samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
+	private SampleLocusLogFile    msgLog;
+	
+	private static final String[] CALL_FILE_HEADERS = new String[] { "Sample", "Locus", "Call", "Mutation", "MissingCodonCallsProp", "MedianReadCount", "MeanReadCount" };
+	private static final String[] MULTI_MUTANT_FILE_HEADERS = new String[] { "Sample", "Locus", "Alleles", "ReadCount" };
+	private static final String[] MESSAGE_LOG_FILE_HEADERS = new String[] { "Message", "Allele", "ReadCount" };
 
 	public HeteroallelicAnalysis(File configFile, File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException {
 		super(refFastaFile, chrMapFile, outRootFolder);
 		config = new HeteroallelicConfig(configFile);
 	}
-
+	
 	public void analyzeSample(Sample sample) throws AnalysisException {
 		log.info("Starting " + sample.getName());
 		HeteroallelicLocus[] loci = config.getLoci();
+		File outFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
+		
 		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
+			HeteroallelicLocus locus = loci[lIdx];
+			msgLog = new SampleLocusLogFile(sample, locus, MESSAGE_LOG_FILE_HEADERS);
+			
 			try {
-				analyzeSampleAtLocus(sample, loci[lIdx]);
+				// Analyze the sample in the locus region
+				LocusRegion region = analyzeSampleLocusRegion(sample, locus);
+				
+				// Write out the mutant codon calls to file
+				TableOutput alleleOut = new TableOutput(outFolder, sample.getName() + "." + locus.getName() + ".mutations.tab", 
+						new String[] { "Sample", "Locus", "Codon", "Call", "Mutation", "TotalReadCount", "MutantReadCount", "MutantReadProp" }, 64 * 1024);
+				int sampleCall = CALL_MISSING;
+				String sampleMutation = null;
+				int[] readCounts = new int[region.codonCount];
+				
+				int missingCount = 0;
+				for (int cIdx = 0; cIdx < region.codonCount; cIdx++) {
+					CodonCall cc = region.callCodon(cIdx);
+					readCounts[cIdx] = cc.totalReads;
+					
+			        switch (cc.call) {
+					case CALL_MISSING:
+						missingCount++;
+						break;
+					case CALL_WT:
+						if (sampleCall == CALL_MISSING) {
+							sampleCall = CALL_WT;
+						}
+						break;
+					case CALL_MUTANT: 
+						switch (sampleCall) {
+						case CALL_MISSING:
+						case CALL_WT:
+							sampleCall = CALL_MUTANT;
+							sampleMutation = cc.mutation;
+							break;
+						case CALL_MUTANT:
+						case CALL_HET:
+							sampleCall = CALL_HET;
+							sampleMutation = (sampleMutation == null) ? cc.mutation : sampleMutation+","+cc.mutation;
+							break;
+						}
+						break;
+					case CALL_HET:
+						sampleCall = CALL_HET;
+						switch (sampleCall) {
+						case CALL_MISSING:
+						case CALL_WT:
+							sampleMutation = cc.mutation;
+							break;
+						case CALL_MUTANT:
+						case CALL_HET:
+							sampleMutation = (sampleMutation == null) ? cc.mutation : sampleMutation+","+cc.mutation;
+							break;
+						}
+						break;
+					}
+					if (cc.call == CALL_MUTANT || cc.call == CALL_HET) {
+						alleleOut.newRow();
+						alleleOut.appendValue(sample.getName());
+						alleleOut.appendValue(locus.getName());
+						alleleOut.appendValue(cIdx + locus.getStartCodon());
+						alleleOut.appendValue(getCallString(cc.call));
+						alleleOut.appendValue(cc.mutation);
+						alleleOut.appendValue(cc.totalReads);
+						alleleOut.appendValue(cc.mutReads);
+						alleleOut.appendValue(cc.mutProp);
+					}
+				}
+				alleleOut.close();
+				
+				double missingCallsProp = ((double)missingCount) / ((double)region.codonCount);
+
+				// Write out the call for the sample to file
+				Statistics stat = new Statistics(readCounts);
+				TableOutput callOut = new TableOutput(outFolder, sample.getName() + "." + locus.getName() + ".calls.tab", CALL_FILE_HEADERS, 1024);
+				callOut.setMaximumFractionDigits(2);
+				callOut.newRow();
+				callOut.appendValue(sample.getName());
+				callOut.appendValue(locus.getName());
+				callOut.appendValue(getCallString(sampleCall));
+				callOut.appendValue(sampleMutation);
+				callOut.appendValue(missingCallsProp);
+				callOut.appendValue(stat.getMedian());
+				callOut.appendValue(stat.getMean());
+				callOut.close();
+				
+				// Report any multiple mutant reads observed in the sample
+				MultipleMutant[] mutants = region.getMultipleMutants ();
+				if (mutants.length > 0) {
+					TableOutput mmOut = new TableOutput(outFolder, sample.getName() + "." + locus.getName() + ".multipleMutants.tab", MULTI_MUTANT_FILE_HEADERS, 4096);
+					for (MultipleMutant mm : mutants) {
+						mmOut.newRow();
+						mmOut.appendValue(sample.getName());
+						mmOut.appendValue(locus.getName());
+						mmOut.appendValue(mm.getLabel());
+						mmOut.appendValue(mm.readCounts);
+					}
+					mmOut.close();
+				}
+				
+				// Report messages, if any were generated for the sample
+				if (!msgLog.isEmpty()) {
+					msgLog.saveFile(outFolder);
+					msgLog.clear();
+				}
+				
 			} catch (AnalysisException e) {
 				log.info("Aborted analysis of " + sample.getName() + " at locus " + loci[lIdx].getName() + ": " + e);
 				e.printStackTrace();
 			}
 		}
+		
 		log.info("Completed " + sample.getName());
 	}
-
-	public void analyzeSampleAtLocus(Sample sample, HeteroallelicLocus locus) throws AnalysisException {
-		GenomeRegion locusregion = locus.getRegion();
-		String chrName = locusregion.getChromosome();
-		chrName = ChromosomeMap.getMappedChromosomeName((String) chrName, (String) sample.getBamChromosomeMap());
-		Sequence chrRefSeq = ReferenceGenome.getChrSequence((String) chrName);
-		int locusStartPos = locusregion.getStartPos();
-		int locusEndPos = locusregion.getStopPos();
-		String locusRefSeq = chrRefSeq.getData().substring(locusStartPos - 1, locusEndPos);
-		if (locus.isReverse()) {
-			locusRefSeq = SequenceUtilities.getReverseComplementSequence((String) locusRefSeq);
-		}
-		int locusSeqLen = locusRefSeq.length();
-		int locusCodonCount = locusSeqLen / 3;
-		char[] locusRefAminos = SequenceUtilities.translateNtSequence((String) locusRefSeq).toCharArray();
-
-		AminoAlleleCounter[] codonCounters = new AminoAlleleCounter[locusCodonCount];
-		for (int i = 0; i < locusCodonCount; i++) {
-			codonCounters[i] = new AminoAlleleCounter();
-		}
+	
+	public LocusRegion analyzeSampleLocusRegion(Sample sample, HeteroallelicLocus locus) throws AnalysisException {
+		
+		LocusRegion region = new LocusRegion (locus, sample);
 		ArrayList<MutantAllele> mutantAlleleList = new ArrayList<MutantAllele>();
-		HashMap<String, MultipleMutant> multipleMutantTable = new HashMap<String, MultipleMutant>();
 		SamReader samReader = samReaderFactory.open(sample.getBamFile());
-		SAMRecordIterator it = samReader.query(chrName, locusStartPos, locusEndPos, false);
+		SAMRecordIterator it = samReader.query(region.chrName, region.startPos, region.endPos, false);
 		while (it.hasNext()) {
-			int trimRightIdx;
-			int readRightOffset;
-			int lastCodonIdx;
-			int firstCodonIdx;
-			int trimLeftIdx;
-			int readEndPos;
 			SAMRecord record = (SAMRecord) it.next();
 			boolean isUngapped = (record.getCigarLength() == 1) && record.getCigarString().endsWith("M");
 			if (!isUngapped) {
@@ -85,7 +175,9 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 			}
 			int readLen = record.getReadLength();
 			int readStartPos = record.getAlignmentStart();
-			int readLeftOffset = readStartPos - locusStartPos;
+			int readLeftOffset = readStartPos - region.startPos;
+			int firstCodonIdx;
+			int trimLeftIdx;
 			if (readLeftOffset < 0) {
 				firstCodonIdx = 0;
 				trimLeftIdx = -readLeftOffset;
@@ -105,16 +197,20 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 				if (trimmedLen < 3)
 					continue;
 			}
-			readEndPos = readStartPos + readLen - 1;
-			if ((readRightOffset = locusEndPos - readEndPos) < 0) {
-				lastCodonIdx = locusCodonCount - 1;
+			
+			int trimRightIdx;
+			int readRightOffset;
+			int lastCodonIdx;
+			int readEndPos = readStartPos + readLen - 1;
+			if ((readRightOffset = region.endPos - readEndPos) < 0) {
+				lastCodonIdx = region.codonCount - 1;
 				trimRightIdx = readLen - 1 + readRightOffset;
 				int trimmedLen = 1 + trimRightIdx - trimLeftIdx;
 				if (trimmedLen < 3) {
 					continue;
 				}
 			} else {
-				lastCodonIdx = locusCodonCount - 1 - readRightOffset / 3;
+				lastCodonIdx = region.codonCount - 1 - readRightOffset / 3;
 				int trimRightLen = readRightOffset % 3;
 				trimRightIdx = readLen - 1;
 				if (trimRightLen > 0) {
@@ -132,29 +228,86 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 			if (locus.isReverse()) {
 				trimmedReadSeq = SequenceUtilities.getReverseComplementSequence((String) trimmedReadSeq);
 				trimmedReadQ = TextUtilities.reverse((String) trimmedReadQ);
-				int firstCodonIdxTmp = locusCodonCount - lastCodonIdx - 1;
-				lastCodonIdx = locusCodonCount - firstCodonIdx - 1;
+				int firstCodonIdxTmp = region.codonCount - lastCodonIdx - 1;
+				lastCodonIdx = region.codonCount - firstCodonIdx - 1;
 				firstCodonIdx = firstCodonIdxTmp;
 			}
 			char[] readAminos = SequenceUtilities.translateNtSequence((String) trimmedReadSeq).toCharArray();
 			boolean[] highQuality = getCodonQuality(trimmedReadQ);
 			mutantAlleleList.clear();
 			
+			boolean isReverse = record.getReadNegativeStrandFlag();
 			for (int i2 = 0; i2 < readAminos.length; i2++) {
 				int codonIdx = firstCodonIdx + i2;
-				if (codonIdx >= locusCodonCount)
+				if (codonIdx >= region.codonCount)
 					break;
 				if (highQuality[i2]) {
 					char amino = readAminos[i2];
-					char refAmino = locusRefAminos[codonIdx];
+					char refAmino = region.refAminos[codonIdx];
 					if (amino != refAmino) {
-						mutantAlleleList.add(new MutantAllele(codonIdx, refAmino, amino));
+						mutantAlleleList.add(new MutantAllele(codonIdx+locus.getStartCodon(), refAmino, amino));
 					}
-					codonCounters[codonIdx].increment(amino);
+					region.processReadAminoAllele (codonIdx, amino, isReverse);
 				}
 			}
+			
+			region.processReadForMultipleMutations (mutantAlleleList);
+		}
+		it.close();
+		return region;
+	}
+	
+	private class LocusRegion {
+		HeteroallelicLocus locus;
+		//Sample sample;
+		String chrName;
+		int    startPos;
+		int    endPos;
+		String ntRefSeq;
+		char[] refAminos;
+		int    codonCount;
+		AminoAlleleCounter[] codonCounters;    // Counts the reads for each allele at each position
+		AminoAlleleCounter[] revCodonCounters; // Counts the reverse-strand reads for each allele at each position
+		HashMap<String, MultipleMutant> multipleMutantTable;
+		
+		public LocusRegion (HeteroallelicLocus locus, Sample sample) throws AnalysisException {
+			this.locus = locus;
+			// Get the locus ref NT sequence
+			GenomeRegion locusregion = locus.getRegion();
+			chrName = locusregion.getChromosome();
+			chrName = ChromosomeMap.getMappedChromosomeName(chrName, sample.getBamChromosomeMap());
+			Sequence chrRefSeq = ReferenceGenome.getChrSequence(chrName);
+			startPos = locusregion.getStartPos();
+			endPos = locusregion.getStopPos();
+			ntRefSeq = chrRefSeq.getData().substring(startPos - 1, endPos);
+			if (locus.isReverse()) {
+				ntRefSeq = SequenceUtilities.getReverseComplementSequence(ntRefSeq);
+			}
+			
+			// Get the ref aminos
+			refAminos = SequenceUtilities.translateNtSequence(ntRefSeq).toCharArray();
+			codonCount = refAminos.length;
+
+			codonCounters = new AminoAlleleCounter[codonCount];
+			revCodonCounters = new AminoAlleleCounter[codonCount]; // Counts 
+			for (int i = 0; i < codonCount; i++) {
+				codonCounters[i] = new AminoAlleleCounter();
+				revCodonCounters[i] = new AminoAlleleCounter();
+			}
+			multipleMutantTable = new HashMap<String, MultipleMutant>();
+		}
+		
+		
+		public void processReadAminoAllele (int codonIdx, char amino, boolean isReverse) {
+			codonCounters[codonIdx].increment(amino);
+			if (isReverse) {
+				revCodonCounters[codonIdx].increment(amino);
+			}
+		}
+		
+		public void processReadForMultipleMutations (ArrayList<MutantAllele> mutantAlleleList) {
 			if (mutantAlleleList.size() <= 1)
-				continue;
+				return;
 			MultipleMutant mm = new MultipleMutant(mutantAlleleList);
 			String mmLabel = mm.getLabel();
 			MultipleMutant tableMm = (MultipleMutant) multipleMutantTable.get(mmLabel);
@@ -164,19 +317,117 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 			}
 			tableMm.readCounts++;
 		}
-		it.close();
-		callSample(sample, locus, codonCounters, locusRefAminos);
-		ArrayList<MultipleMutant> multipleMutantList = new ArrayList<MultipleMutant>();
-		for (MultipleMutant mm : multipleMutantTable.values()) {
-			if (mm.readCounts < 2)
-				continue;
-			multipleMutantList.add(mm);
+		
+		public MultipleMutant[] getMultipleMutants () {
+			ArrayList<MultipleMutant> multipleMutantList = new ArrayList<MultipleMutant>();
+			for (MultipleMutant mm : multipleMutantTable.values()) {
+				if (mm.readCounts < 2) {  // Remove singletons
+					continue;
+				}
+				multipleMutantList.add(mm);
+			}
+			MultipleMutant[] result = new MultipleMutant[multipleMutantList.size()];
+			return multipleMutantList.toArray(result);
 		}
-		if (!multipleMutantList.isEmpty()) {
-			outputMultipleMutants(sample, locus, multipleMutantList);
+		
+		public CodonCall callCodon(int cIdx) throws AnalysisException {
+			
+			int codonPos = cIdx + locus.getStartCodon();
+			AminoAlleleCounter codonCounter = codonCounters[cIdx];
+			AminoAlleleCounter revCodonCounter = revCodonCounters[cIdx];
+			char refAllele = refAminos[cIdx];
+			CodonCall cc = new CodonCall(codonPos, codonCounter, revCodonCounter, refAllele);
+			return cc;
 		}
 	}
 
+
+	public class CodonCall {
+		
+		int    call = CALL_MISSING;
+		
+		int    totalReads = 0;
+		int    alleleCount = 0;
+		
+		String mutation = "-";
+		int    mutReads = 0;
+		double mutProp = 0.0;
+		
+		public CodonCall(int codonPos, AminoAlleleCounter codonCounter, AminoAlleleCounter revCodonCounter, char refAllele) {
+
+			AlleleCounter.AlleleCount[] counts = codonCounter.getSortedAlleleCounts();
+			
+			// Count the alleles
+			for (int i = 0; i < counts.length; i++) {
+				int alleleNumReads = counts[i].getCount();
+				if (alleleNumReads <= MIN_ALLELE_COVERAGE) {
+					break;
+				}
+				alleleCount++;
+				totalReads += alleleNumReads;
+			}
+			
+			// Fewer than 5 reads: missing
+			if (totalReads < MIN_CALL_COVERAGE) {
+				return;
+			}
+			
+			// One allele: it's either WT or mutant
+			if (alleleCount == 1) {
+				char allele = counts[0].getAllele();
+				if (allele == refAllele) {
+					call = CALL_WT;
+				} else {
+					call = CALL_MUTANT;
+					mutation = "" + refAllele + codonPos + allele;
+					mutReads = totalReads;
+					mutProp = 1.0;
+				}
+				return;
+			}
+				
+			// Multiple alleles: probably a het call, but we have to disregard errors and artefacts
+			char allele0 = counts[0].getAllele();
+			char allele1 = counts[1].getAllele();
+			if ((allele0 != refAllele) && (allele1 != refAllele)) {
+				// Non-biallelic call - give up on this one, at least for now - return missing
+				return;
+			}
+			
+			//int refIdx  = (allele0 == refAllele) ? 0 : 1;
+			int nrefIdx = (allele0 == refAllele) ? 1 : 0;
+			char nrefAllele = counts[nrefIdx].getAllele();
+			
+			totalReads = counts[0].getCount() + counts[1].getCount();
+			int nrefReads = counts[nrefIdx].getCount();
+			
+			int refRevReads = revCodonCounter.getCount(refAllele);
+			int nrefRevReads = revCodonCounter.getCount(nrefAllele);
+			int totalRevReads = refRevReads + nrefRevReads;
+			
+			// Test if the alternative allele is the product of many reads on the same strad (likely artefact)
+			boolean validNref = isValidNonRefAllele (nrefReads, nrefRevReads, totalReads, totalRevReads);
+			if (!validNref) {
+				call = CALL_WT;
+				msgLog.addMessage(new String[] { "NONREF_ALLELE_FROM_SINGLE_STRAND_IN_HET", ""+refAllele+codonPos+nrefAllele+'*', Integer.toString(nrefReads) });
+				return;
+			}
+			
+			// Proper het
+			call = CALL_HET;
+			mutation = "" + refAllele + codonPos + nrefAllele + '*';
+			mutReads = nrefReads;
+			mutProp = ((double) nrefReads) / ((double) totalReads);
+		}
+
+		boolean isValidNonRefAllele (int nrefReads, int nrefRevReads, int totalReads, int totalRevReads) {
+			// Discard if >85% of reads are in one direction 
+			double directionProp = ((double) nrefRevReads) / ((double) nrefReads);
+			return ((directionProp <= MAX_READ_DIRECTION_PROPORTION) 
+			     && (directionProp >= (1.0 - MAX_READ_DIRECTION_PROPORTION)));
+		}
+	}
+	
 	private boolean[] getCodonQuality(String qString) {
 		int codonCount = qString.length() / 3;
 		boolean[] hq = new boolean[codonCount];
@@ -187,78 +438,6 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 					&& ((qString.charAt(baseIdx + 2) - 33) >= 20));
 		}
 		return hq;
-	}
-
-	public void callSample(Sample sample, HeteroallelicLocus locus, AminoAlleleCounter[] codonCounters, char[] refAminos) throws AnalysisException {
-		File outFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
-		TableOutput alleleOut = new TableOutput(outFolder, String.valueOf(sample.getName()) + "." + locus.getName() + ".mutations.tab", 
-				new String[] { "Sample", "Locus", "Codon", "Call", "Mutation", "TotalReadCount", "MutantReadCount", "MutantReadProp" }, 64 * 1024);
-		int sampleCall = CALL_WT;
-		String sampleMutation = null;
-		int[] readCounts = new int[codonCounters.length];
-		
-		for (int cIdx = 0; cIdx < codonCounters.length; cIdx++) {
-			CodonCall cc = callCodon(cIdx + locus.getStartCodon(), codonCounters[cIdx], refAminos[cIdx]);
-			readCounts[cIdx] = cc.totalReads;
-			
-	    switch (cc.call) {
-			case CALL_MISSING:
-			case CALL_WT: {
-				break;
-			}
-			case CALL_MUTANT: {
-				switch (sampleCall) {
-				case CALL_MISSING:
-				case CALL_WT: {
-					sampleCall = CALL_MUTANT;
-					sampleMutation = cc.mutation;
-					break;
-				}
-				case CALL_MUTANT:
-				case CALL_HET:
-					sampleCall = CALL_HET;
-					sampleMutation = sampleMutation + "," + cc.mutation;
-					break;
-				}
-				break;
-			}
-			case CALL_HET:
-				sampleCall = CALL_HET;
-				switch (sampleCall) {
-				case CALL_MISSING:
-				case CALL_WT:
-					sampleMutation = cc.mutation;
-					break;
-				case CALL_MUTANT:
-				case CALL_HET:
-					sampleMutation = sampleMutation + "," + cc.mutation;
-					break;
-				}
-				break;
-			}
-			if (cc.call == CALL_MUTANT || cc.call == CALL_HET) {
-				alleleOut.newRow();
-				alleleOut.appendValue(sample.getName());
-				alleleOut.appendValue(locus.getName());
-				alleleOut.appendValue(cIdx + locus.getStartCodon());
-				alleleOut.appendValue(getCallString(cc.call));
-				alleleOut.appendValue(cc.mutation);
-				alleleOut.appendValue(cc.totalReads);
-				alleleOut.appendValue(cc.mutReads);
-				alleleOut.appendValue(cc.mutProp);
-			}
-		}
-		alleleOut.close();
-		Statistics stat = new Statistics(readCounts);
-		TableOutput callOut = new TableOutput(outFolder, sample.getName() + "." + locus.getName() + ".calls.tab", CALL_FILE_HEADERS, 1024);
-		callOut.newRow();
-		callOut.appendValue(sample.getName());
-		callOut.appendValue(locus.getName());
-		callOut.appendValue(getCallString(sampleCall));
-		callOut.appendValue(sampleMutation);
-		callOut.appendValue(stat.getMedian());
-		callOut.appendValue(stat.getMean());
-		callOut.close();
 	}
 
 	private String getCallString(int call) {
@@ -275,114 +454,10 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 		return "-";
 	}
 
-	public CodonCall callCodon(int codonPos, AminoAlleleCounter codonCounter, char refAllele) throws AnalysisException {
-		CodonCall cc = new CodonCall();
-		AlleleCounter.AlleleCount[] counts = codonCounter.getSortedAlleleCounts();
-		
-		for (int i = 0; i < counts.length; i++) {
-			int alleleNumReads = counts[i].getCount();
-			if (alleleNumReads <= 2) {
-				break;
-			}
-			char allele = counts[i].getAllele();
-			if (allele == refAllele) {
-				cc.isWt = true;
-			} else {
-				cc.mutReads += alleleNumReads;
-			}
-			cc.alleleCount++;
-			cc.totalReads += alleleNumReads;
-		}
-		if (cc.totalReads >= 5) {
-			if (cc.alleleCount == 1) {
-				if (cc.isWt) {
-					cc.call = CALL_WT;
-				} else {
-					cc.call = CALL_MUTANT;
-					cc.mutation = "" + refAllele + codonPos + counts[0].getAllele();
-					cc.mutReads = cc.totalReads;
-					cc.mutProp = 1.0;
-				}
-			} else {
-				cc.call = CALL_HET;
-				char topAllele = counts[0].getAllele();
-				char nonRefAllele = topAllele == refAllele ? counts[1].getAllele() : topAllele;
-				cc.mutation = "" + refAllele + codonPos + nonRefAllele + '*';
-				double wtReads = topAllele == refAllele ? counts[0].getCount() : counts[1].getCount();
-				cc.mutProp = 1.0 - wtReads / (double) cc.totalReads;
-			}
-		}
-		return cc;
-	}
-
-	public void outputMultipleMutants(Sample sample, HeteroallelicLocus locus, Collection<MultipleMutant> mutantsList) throws AnalysisException {
-		File outFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
-		TableOutput mmOut = new TableOutput(outFolder, String.valueOf(sample.getName()) + "." + locus.getName() + ".multipleMutants.tab", MULTI_MUTANT_FILE_HEADERS, 4096);
-		for (MultipleMutant mm : mutantsList) {
-			mmOut.newRow();
-			mmOut.appendValue(sample.getName());
-			mmOut.appendValue(locus.getName());
-			mmOut.appendValue(mm.getLabel());
-			mmOut.appendValue(mm.readCounts);
-		}
-		mmOut.close();
-	}
-
-	public void analyzeAllSampleResults(Sample[] samples) throws AnalysisException, IOException {
-		HeteroallelicLocus[] loci = config.getLoci();
-		
-		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
-			try {
-				analyzeAllSamplesAtLocus(samples, loci[lIdx]);
-			} catch (Exception e) {
-				log.info("Aborted analysis of locus " + loci[lIdx].getName() + ": " + e);
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private void analyzeAllSamplesAtLocus(Sample[] samples, HeteroallelicLocus locus) throws AnalysisException, IOException {
-		mergeResultFiles(samples, locus, ".calls", CALL_FILE_HEADERS);
-		mergeResultFiles(samples, locus, ".multipleMutants", MULTI_MUTANT_FILE_HEADERS);
-	}
-
-	private void mergeResultFiles(Sample[] samples, HeteroallelicLocus locus, String filenameSuffix, String[] fieldHeaders) throws AnalysisException, IOException {
-		TableOutput mergeOut = new TableOutput(outRootFolder, "AllSamples." + locus.getName() + filenameSuffix + ".tab", fieldHeaders, 1048576);
-		
-		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
-			Sample sample = samples[sIdx];
-			File sampleFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
-			File sampleFile = new File(sampleFolder, String.valueOf(sample.getName()) + "." + locus.getName() + filenameSuffix + ".tab");
-			if (!sampleFile.exists() || !sampleFile.canRead()) {
-				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
-				TableInput tif = new TableInput(sampleFile);
-				tif.getFieldNames();
-				try {
-					String[] inFields;
-					while ((inFields = tif.getNextValidLine()) != null) {
-						mergeOut.newRow();
-						for (int fIdx = 0; fIdx < fieldHeaders.length; fIdx++) {
-							mergeOut.appendValue(inFields[fIdx + 1]);
-						}
-					}
-				} finally {
-					tif.close();
-				}
-			}
-		}
-		mergeOut.close();
-	}
-
-	public static class CodonCall {
-		int call = CALL_MISSING;
-		String mutation = "-";
-		int mutReads = 0;
-		int totalReads = 0;
-		boolean isWt = false;
-		int alleleCount = 0;
-		double mutProp = 0.0;
-	}
-
+	/* ==========================================================
+	 * Result and Utility classes
+	 * ==========================================================
+	 */
 	public static class MultipleMutant {
 		MutantAllele[] mutantAlleles;
 		int readCounts;
@@ -408,26 +483,107 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	}
 
 	public static class MutantAllele {
-		int codonIdx;
+		int codonPos;
 		char refAllele;
 		char allele;
 		String label;
 		int readCount;
 
-		public MutantAllele(int codonIdx, char refAllele, char allele) {
-			this.codonIdx = codonIdx;
+		public MutantAllele(int codonPos, char refAllele, char allele) {
+			this.codonPos = codonPos;
 			this.refAllele = refAllele;
 			this.allele = allele;
 		}
 
 		public String toString() {
 			if (label == null) {
-				label = "" + refAllele + (codonIdx + 1) + allele;
+				label = "" + refAllele + codonPos + allele;
 			}
 			return label;
 		}
 	}
 
+	private static final String[] SAMPLE_LOCUS_HEADERS = new String[] { "Sample", "Locus"};
+	private class SampleLocusLogFile extends MessageLogFile {
+		String[] sampleLocusNames;
+		
+		public SampleLocusLogFile(Sample sample, HeteroallelicLocus locus, String[] headers) {
+			super (TextUtilities.mergeStringLists(SAMPLE_LOCUS_HEADERS, headers));
+			sampleLocusNames = new String[] { sample.getName(), locus.getName() };
+		}
+
+		@Override
+		public void addMessage (String[] msgFields) {
+			super.addMessage(TextUtilities.mergeStringLists(sampleLocusNames, msgFields));
+		}
+		
+		public void saveFile (File outFolder) throws AnalysisException {
+			String filename = sampleLocusNames[0] + "." + sampleLocusNames[1] + ".messages.tab";
+			saveFile(outFolder, filename);
+		}
+	}
+
+	/* ==========================================================
+	 * Result Merging
+	 * ==========================================================
+	 */
+	public void analyzeAllSampleResults(Sample[] samples) throws AnalysisException, IOException {
+		HeteroallelicLocus[] loci = config.getLoci();
+		
+		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
+			try {
+				analyzeAllSamplesAtLocus(samples, loci[lIdx]);
+			} catch (Exception e) {
+				log.info("Aborted analysis of locus " + loci[lIdx].getName() + ": " + e);
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private void analyzeAllSamplesAtLocus(Sample[] samples, HeteroallelicLocus locus) throws AnalysisException, IOException {
+		mergeResultFiles(samples, locus, ".calls");
+		mergeResultFiles(samples, locus, ".mutations");
+		mergeResultFiles(samples, locus, ".multipleMutants");
+		mergeResultFiles(samples, locus, ".messages");
+	}
+
+	private void mergeResultFiles(Sample[] samples, HeteroallelicLocus locus, String filenameSuffix) throws AnalysisException, IOException {
+		//TableOutput mergeOut = new TableOutput(outRootFolder, "AllSamples." + locus.getName() + filenameSuffix + ".tab", fieldHeaders, 1048576);
+		TableOutput mergeOut = null;
+		
+		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
+			Sample sample = samples[sIdx];
+			File sampleFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
+			File sampleFile = new File(sampleFolder, String.valueOf(sample.getName()) + "." + locus.getName() + filenameSuffix + ".tab");
+			if (!sampleFile.exists() || !sampleFile.canRead()) {
+				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
+			} else {
+				TableInput tif = new TableInput(sampleFile);
+				// Get the headers, removing the "Num" automatic field at the start
+				String[] fieldHeaders = tif.getFieldNames();
+				fieldHeaders = Arrays.copyOfRange(fieldHeaders, 1, fieldHeaders.length); 
+				if (mergeOut == null) {
+					mergeOut = new TableOutput(outRootFolder, "AllSamples." + locus.getName() + filenameSuffix + ".tab", fieldHeaders, 1048576);
+				}
+				try {
+					String[] inFields;
+					while ((inFields = tif.getNextValidLine()) != null) {
+						mergeOut.newRow();
+						for (int fIdx = 0; fIdx < fieldHeaders.length; fIdx++) {
+							mergeOut.appendValue(inFields[fIdx + 1]);
+						}
+					}
+				} finally {
+					tif.close();
+				}
+			}
+		}
+		if (mergeOut != null) {
+			mergeOut.close();
+		}
+	}
+
+	
 	/* ==========================================================
 	 * Single Sample Execution
 	 * ==========================================================
