@@ -12,6 +12,7 @@ import java.io.*;
 import java.util.*;
 import org.apache.commons.logging.*;
 
+
 public class HeteroallelicAnalysis extends SampleAnalysis {
 	
 	private static Log log = LogFactory.getLog((String)ClassUtilities.getCurrentClassName());
