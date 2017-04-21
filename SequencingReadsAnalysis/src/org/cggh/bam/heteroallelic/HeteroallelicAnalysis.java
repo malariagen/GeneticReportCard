@@ -18,7 +18,6 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	private static Log log = LogFactory.getLog((String)ClassUtilities.getCurrentClassName());
 	
 	public static final int MIN_CALL_COVERAGE = 5;
-	public static final int MIN_ALLELE_COVERAGE = 5;
 	public static final double MAX_READ_DIRECTION_PROPORTION = 0.85;
 	
 	public static final int MIN_PHRED_SCORE = 20;
@@ -31,7 +30,9 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	private HeteroallelicConfig   config;
 	private SamReaderFactory      samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	private SampleLocusLogFile    msgLog;
+	private Genotyper genotyper = new Genotyper.Genotyper5percent();
 	
+
 	private static final String[] CALL_FILE_HEADERS = new String[] { "Sample", "Locus", "Call", "Mutation", "MissingCodonCallsProp", "MedianReadCount", "MeanReadCount" };
 	private static final String[] MULTI_MUTANT_FILE_HEADERS = new String[] { "Sample", "Locus", "Alleles", "ReadCount" };
 	private static final String[] MESSAGE_LOG_FILE_HEADERS = new String[] { "Message", "Allele", "ReadCount" };
@@ -73,6 +74,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 					case CALL_WT:
 						if (sampleCall == CALL_MISSING) {
 							sampleCall = CALL_WT;
+							sampleMutation = "WT";
 						}
 						break;
 					case CALL_MUTANT: 
@@ -344,7 +346,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 
 
 	public class CodonCall {
-		
+
 		int    call = CALL_MISSING;
 		
 		int    totalReads = 0;
@@ -358,19 +360,20 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 
 			AlleleCounter.AlleleCount[] counts = codonCounter.getSortedAlleleCounts();
 			
+			// Fewer than 5 reads: missing
+			totalReads = codonCounter.getCumulativeCount();
+			if (totalReads < MIN_CALL_COVERAGE) {
+				return;
+			}
+			
 			// Count the alleles
 			for (int i = 0; i < counts.length; i++) {
-				int alleleNumReads = counts[i].getCount();
-				if (alleleNumReads <= MIN_ALLELE_COVERAGE) {
+				int alleleReads = counts[i].getCount();
+				boolean isValidAllele = genotyper.isValidAllele(alleleReads, totalReads);
+				if (!isValidAllele) {
 					break;
 				}
 				alleleCount++;
-				totalReads += alleleNumReads;
-			}
-			
-			// Fewer than 5 reads: missing
-			if (totalReads < MIN_CALL_COVERAGE) {
-				return;
 			}
 			
 			// One allele: it's either WT or mutant
@@ -392,10 +395,10 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 			char allele1 = counts[1].getAllele();
 			if ((allele0 != refAllele) && (allele1 != refAllele)) {
 				// Non-biallelic call - give up on this one, at least for now - return missing
+				msgLog.addMessage(new String[] { "MULTIALLELIC_CODON_WITHOUT_REF", ""+refAllele+codonPos+allele0+','+refAllele+codonPos+allele1, Integer.toString(totalReads)});
 				return;
 			}
 			
-			//int refIdx  = (allele0 == refAllele) ? 0 : 1;
 			int nrefIdx = (allele0 == refAllele) ? 1 : 0;
 			char nrefAllele = counts[nrefIdx].getAllele();
 			

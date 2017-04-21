@@ -103,7 +103,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 		processLocusCoverageInfo (samples);
 
 		// Analyze one target at a time
-		SampleCaller caller = new SampleCaller(5, 2, 2, 2);
+		SampleCaller caller = new SampleCaller(5, 2);
 		AminoSampleCall[][] allCalls = new AminoSampleCall[allTargets.length][samples.length];			
 		for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
 			Target target = allTargets[tIdx];
