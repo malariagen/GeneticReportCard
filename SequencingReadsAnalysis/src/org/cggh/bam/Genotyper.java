@@ -4,19 +4,27 @@ public abstract class Genotyper {
 	
 	public abstract boolean isValidAllele (int alleleReads, int totalReads);
 	
-	public static class Genotyper5percent extends Genotyper {
+	public static class GenotyperReadCountProportion extends Genotyper {
+		
+		protected double readsPropMultiplier;
+		protected int    totalReadsThreshold;
+		
+		public GenotyperReadCountProportion (double proportionThreshold) {
+			// This is a rounding trick to make sure the threshold is included in the valid interval.
+			// e.g. if threshold is 5%, and total reads are 60, then min reads should be 3, not 4 
+			// (which would be the case without this tiny adjustment)
+			readsPropMultiplier = proportionThreshold - 1E-6;
+			
+			// Min number of total reads; below this value, the min reads for a call is 2
+			totalReadsThreshold = (int)(2.0 / proportionThreshold);
+		}
+		
 		public boolean isValidAllele (int alleleReads, int totalReads) {
-			// Minimum reads for the allele is 2 reads, and 5% of total
-			
-			// Anything below 60 reads total will require 2 reads
-			if (totalReads < 60) {
-				return (alleleReads >= 2);
-			}
-			
-			// Above 60 reads total, require 5% of total
-			int minReads = totalReads / 20;
-			return (alleleReads >= minReads);
+			// Anything below minTotalReads reads total will require 2 reads to call an allele
+			int minAlleleReads = (totalReads <= totalReadsThreshold) ? 2 :  (1 + (int)(((double)totalReads) * readsPropMultiplier));
+			return (alleleReads >= minAlleleReads);
 		}
 	}
+
 }
 

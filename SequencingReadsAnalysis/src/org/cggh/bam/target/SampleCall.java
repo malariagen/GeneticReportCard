@@ -1,6 +1,6 @@
 package org.cggh.bam.target;
 
-import org.cggh.bam.Genotyper;
+import org.cggh.bam.*;
 import org.cggh.common.counters.*;
 
 public class SampleCall {
@@ -14,8 +14,8 @@ public class SampleCall {
 	protected String allele;
 	protected String nrefAllele;
 	protected String alleleSummary;
-	protected Genotyper genotyper = new Genotyper.Genotyper5percent();
-	
+	protected Genotyper genotyper = new Genotyper.GenotyperReadCountProportion(0.05); // 5% total reads is the min to call an allele
+
 	public SampleCall (LabelCounters aCounters, Target t, int minCallReads) {
 		
 		alleleSummary = aCounters.getSummary();

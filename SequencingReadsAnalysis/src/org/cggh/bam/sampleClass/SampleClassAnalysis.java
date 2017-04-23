@@ -60,7 +60,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	private static final String[] LISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","SampleClass"};
 	private static final String[] UNLISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","Proportion","Closest","Diff"};
 	
-
+	private Genotyper genotyper = new Genotyper.GenotyperReadCountProportion(0.05); // 5% total reads is the min to call an allele
 	
 	/*
 	 * Write out the results for this sample into two files: one of counts of listed sample class-specific alleles,
@@ -69,7 +69,6 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	protected void outputSampleResults (SampleAlleleClassResults sr) throws AnalysisException, IOException  {
 		Sample sample = sr.getSample();
 		File outFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
-		Genotyper genotyper = new Genotyper.Genotyper5percent();
 
 		TableOutput alleleSetOut = new TableOutput (outFolder, sample.getName()+".classAlleles.tab", LISTED_ALLELES_HEADERS, 64 * 1024);		
 

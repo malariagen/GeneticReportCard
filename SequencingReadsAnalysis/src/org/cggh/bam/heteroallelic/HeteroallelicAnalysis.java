@@ -30,7 +30,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	private HeteroallelicConfig   config;
 	private SamReaderFactory      samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	private SampleLocusLogFile    msgLog;
-	private Genotyper genotyper = new Genotyper.Genotyper5percent();
+	private Genotyper genotyper = new Genotyper.GenotyperReadCountProportion(0.05); // 5% total reads is the min to call an allele
 	
 
 	private static final String[] CALL_FILE_HEADERS = new String[] { "Sample", "Locus", "Call", "Mutation", "MissingCodonCallsProp", "MedianReadCount", "MeanReadCount" };

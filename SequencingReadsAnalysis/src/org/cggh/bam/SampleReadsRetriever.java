@@ -56,6 +56,10 @@ public class SampleReadsRetriever {
 		SAMRecordIterator it = samReader.query(transChrName, readSearchInterval.getStartPos(), readSearchInterval.getStopPos(), true);
 		while (it.hasNext()) {
 			SAMRecord record = it.next();
+			// This will ignore all secondary and supplementary alignments, reads not passing vendor filters, as well as any duplicates
+			if (record.getFlags() >= 256) {
+				continue;
+			}
 			
 			// If the read is ungapped, we can use the BAM start/end coords
 			if (!remapAllReads && (record.getCigarLength() == 1) && (record.getCigarString().endsWith("M"))) {
