@@ -39,7 +39,8 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	public void analyzeSample (Sample sample) throws AnalysisException  {
 		log.info("Starting " + sample.getName());
 		try {
-			SampleAlleleClassAnalyzer analyzer = new SampleAlleleClassAnalyzer (config, sample);
+			File outFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+			SampleAlleleClassAnalyzer analyzer = new SampleAlleleClassAnalyzer (config, sample, outFolder);
 			SampleAlleleClassResults sr = analyzer.analyzeSample();
 			
 			// Analyze unlisted alleles: if they are very similar to listed ones, and can be 

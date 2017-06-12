@@ -7,6 +7,8 @@ import org.cggh.bam.target.alleleClasses.AlleleClassTarget.*;
 import org.cggh.bam.target.alleleClasses.AlleleClassGenotype.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
+import org.cggh.common.fileIO.TableOutput;
+
 //import org.apache.commons.logging.*;
 import java.io.*;
 import java.util.*;
@@ -19,17 +21,40 @@ public class SampleAlleleClassAnalyzer {
 	private SampleClassConfig  config;
 	private Sample             sample;
 	private AlleleClassLocus[] loci;
+	private File outFolder;
 	
 	
 	/* ==========================================================
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleAlleleClassAnalyzer (SampleClassConfig config, Sample sample) throws AnalysisException  {
-		this.config = config;		
+	public SampleAlleleClassAnalyzer (SampleClassConfig config, Sample sample, File outFolder) throws AnalysisException  {
+		this.config = config;
 		this.loci = (AlleleClassLocus[])config.getLoci();
-		this.sample = sample;		
+		this.sample = sample;
+		this.outFolder = outFolder;
 	}
+
+	protected void outputSampleReads (ArrayList<MappedRead>[] mappedReadLists) throws AnalysisException, IOException  {
+		int idx = 0;
+		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
+			AlleleClassLocus locus = loci[lIdx];
+			AlleleClassTarget[] targets = locus.getTargets();
+			for (int tIdx = 0; tIdx < targets.length; tIdx++) {
+				AlleleClassTarget target = targets[tIdx];
+				ArrayList<MappedRead> reads = mappedReadLists[idx++];
+				String[] headers = {"Sam"};
+				TableOutput out = new TableOutput (outFolder, sample.getName()+"_"+locus.getName()+"_"+target.getName()+".reads.txt", headers, 64 * 1024);		
+				for (int aIdx = 0; aIdx < reads.size(); aIdx++) {
+					MappedRead r = reads.get(aIdx);
+					out.newRow();
+					out.appendValue(r.getSamString());
+				}
+				out.close();
+			}
+		}
+	}
+	
 
 	public SampleAlleleClassResults analyzeSample () throws AnalysisException, IOException  {
 		
@@ -39,18 +64,13 @@ public class SampleAlleleClassAnalyzer {
 		// Read the reads from the SAM file
 		SampleReadsRetriever srr = new SampleReadsRetriever (config);
 		ArrayList<MappedRead>[] mappedReadLists = srr.retrieveSampleReads(sample);
+		//outputSampleReads (mappedReadLists);
 		
 		SampleAlleleClassLocusResult[] locusResults = new SampleAlleleClassLocusResult[loci.length];
 		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
 			AlleleClassLocus locus = loci[lIdx];
 			ArrayList<MappedRead> mappedReadList = mappedReadLists[lIdx];
 			
-			/*
-			// Remove reads that do not cover the target
-			MappedReadFilter filter1 = new MappedReadTargetQualityFilter(locus.targets);
-			@SuppressWarnings("unused")
-			ArrayList<MappedRead> discardedReadsList = filter1.filterReads(mappedReadList);
-			*/
 			MappedRead[] sampleReads = mappedReadList.toArray(new MappedRead[mappedReadList.size()]);
 			
 			AlleleClassTarget[] targets = locus.getTargets();

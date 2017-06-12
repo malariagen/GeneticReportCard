@@ -63,6 +63,9 @@ public class SampleReadsRetriever {
 			
 			// If the read is ungapped, we can use the BAM start/end coords
 			if (!remapAllReads && (record.getCigarLength() == 1) && (record.getCigarString().endsWith("M"))) {
+				//if (record.getAlignmentStart()==289468) {
+				//	remapAllReads = remapAllReads;
+				//}
 				MappedRead sr = new MappedRead(record, locus, record.getAlignmentStart(), MappedRead.MAPPED);
 				mappedReadsList.add(sr);
 			} else {

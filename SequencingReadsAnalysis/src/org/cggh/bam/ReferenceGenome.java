@@ -18,8 +18,9 @@ public class ReferenceGenome {
 			Sequence[] chrSequences = seqSetReader.readSequences(refFastaFile);
 			chrSeqByName = new HashMap<String,Sequence>();
 			for (int i = 0; i < chrSequences.length; i++) {
-				Sequence seq = chrSequences[i];
-				chrSeqByName.put(seq.getId(), seq);
+				String id = chrSequences[i].getId();
+				String data = chrSequences[i].getData().toUpperCase(); // Lowercase can cause issues
+				chrSeqByName.put(id, new Sequence(id, data));
 			}
 		} catch (Exception e) {
 			throw new AnalysisException ("Error reading genome FASTA file from GenomeCache: "+e);
