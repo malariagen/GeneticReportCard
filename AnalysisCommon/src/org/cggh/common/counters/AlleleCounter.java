@@ -102,6 +102,30 @@ public abstract class AlleleCounter {
 		return alleleCounts;
 	}
 	
+	public static String makeAlleleCountString (AlleleCounter counter) {
+		return makeAlleleCountString (counter.getSortedAlleleCounts());
+	}
+		
+	public static String makeAlleleCountString (AlleleCount[] counts) {
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < counts.length; i++) {
+			AlleleCount c = counts[i];
+			if (c.count == 0) {
+				break;
+			}
+			if (sb.length() > 0) {
+				sb.append(',');
+			}
+			sb.append(c.allele);
+			sb.append(':');
+			sb.append(c.count);
+		}
+		if (sb.length() == 0) {
+			sb.append('-');
+		}
+		return sb.toString();
+	}
+	
 	
 	public class AlleleCount implements Comparable<AlleleCount> {
 		

@@ -5,7 +5,6 @@ import org.cggh.common.fileIO.TabFileReader;
 import org.cggh.common.textStore.InputTextStore;
 
 import java.io.*;
-import java.util.Arrays;
 
 public class ColumnFileReader {
 	
@@ -80,23 +79,21 @@ public class ColumnFileReader {
 	}
 	
 	public int[] getColumnIndexes (String[] queryColNames) throws AnalysisException {
-		
-		// Find indexes for the samples we will use
+		// Find indexes for the fields we will use
 	    int[] queryColIdx = new int[queryColNames.length];
-	    Arrays.fill(queryColIdx, -1);
 		for (int colIdx = 0; colIdx < queryColNames.length; colIdx++) {
-			String colName = queryColNames[colIdx];
-			for (int fIdx = 0; fIdx < columnNames.length; fIdx++) {
-				if (colName.equals(columnNames[fIdx])) {
-					queryColIdx[colIdx] = fIdx;
-					break;
-				}
-			}
-			if (queryColIdx[colIdx] < 0) {
-				throw new AnalysisException("Column " + colName + " not found in file.");
-			}
+			queryColIdx[colIdx] = getColumnIndex (queryColNames[colIdx]);
 		}
 		return queryColIdx;
+	}
+	
+	public int getColumnIndex (String colName) throws AnalysisException {
+		for (int fIdx = 0; fIdx < columnNames.length; fIdx++) {
+			if (colName.equals(columnNames[fIdx])) {
+				return fIdx;
+			}
+		}
+		throw new AnalysisException("Column " + colName + " not found in file.");
 	}
 	
 	public ColumnReader getColumnReader (String[] queryColNames) throws AnalysisException {

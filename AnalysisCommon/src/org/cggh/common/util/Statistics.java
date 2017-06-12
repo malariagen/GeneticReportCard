@@ -5,6 +5,8 @@ import java.util.Arrays;
 
 public class Statistics {
 	
+	private double[] set;
+	
 	private double   min;
 	private double   max;
 	private double   mean;
@@ -21,34 +23,35 @@ public class Statistics {
 	private double   quantile95;
 	
 	public Statistics (double[] inputValues) {
-		double[] set = Arrays.copyOf(inputValues, inputValues.length);
-		processValues(set);
+		set = Arrays.copyOf(inputValues, inputValues.length);
+		processValues();
 	}
 	
 	public Statistics (double[] inputValues, int fromIdx, int toIdx) {
-		double[] set = Arrays.copyOfRange(inputValues, fromIdx, toIdx);
-		processValues(set);
+		set = Arrays.copyOfRange(inputValues, fromIdx, toIdx);
+		processValues();
 	}
 	
 	public Statistics (ArrayList<Double> inputValuesList) {
 		int len = inputValuesList.size();		
-		double[] set = new double[len];
+		set = new double[len];
 		for (int i = 0; i < len; i++) {
 			set[i] = (double)inputValuesList.get(i);
 		}
-		processValues(set);
+		processValues();
 	}
 	
 	public Statistics (int[] inputValues) {
 		int len = inputValues.length;
-		double[] set = new double[len];
+		set = new double[len];
 		for (int i = 0; i < len; i++) {
 			set[i] = (double)inputValues[i];
 		}
-		processValues(set);
+		processValues();
 	}
 	
 	private void invalidate() {
+		set = null;
 		count = 0;
 		min = max = Double.NaN;
 		mean = median = stdev = coefVar = Double.NaN;
@@ -60,9 +63,8 @@ public class Statistics {
 		quantile05 = quantile95 = Double.NaN;
 	}
 
-	private void processValues (double[] valueSet) {
+	private void processValues () {
 		// Remove Nans, trimming the set if needed
-		double[] set = valueSet;
 		java.util.Arrays.sort(set);
 		int validCount = 0;
 		for (int i = 0; i < set.length; i++) {
@@ -156,6 +158,25 @@ public class Statistics {
 
 	public double getMedian() {
 		return median;
+	}
+
+	public double findQuantile(double value) {
+		double lastLtIdx = 0;
+		double firstGtIdx = -1;
+		for (int i = 0; i < set.length; i++) {
+			double val = set[i];
+			if (val < value) {
+				lastLtIdx = i + 1;
+			} else if (val > value) {
+				firstGtIdx = i + 1;
+				break;
+			}
+		}
+		if (firstGtIdx < 0) {
+			firstGtIdx = set.length;
+		}
+		double meanIdx = (lastLtIdx + firstGtIdx) / 2.0;
+		return (meanIdx / (double)set.length);
 	}
 
 	public double getQuartile25() {
