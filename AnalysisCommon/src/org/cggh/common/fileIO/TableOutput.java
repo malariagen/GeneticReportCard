@@ -176,6 +176,11 @@ public class TableOutput {
 		}
 	}
 	
+	public void appendValue (boolean value) throws AnalysisException {
+		appendFieldSeparator(sb);
+		sb.append(Boolean.toString(value));
+	}
+	
 	public void close() throws AnalysisException {
 		commitIfHasContent();
 		try {

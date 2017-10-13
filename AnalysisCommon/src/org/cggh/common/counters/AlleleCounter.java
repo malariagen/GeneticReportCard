@@ -105,7 +105,8 @@ public abstract class AlleleCounter {
 	public static String makeAlleleCountString (AlleleCounter counter) {
 		return makeAlleleCountString (counter.getSortedAlleleCounts());
 	}
-		
+
+	
 	public static String makeAlleleCountString (AlleleCount[] counts) {
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < counts.length; i++) {
