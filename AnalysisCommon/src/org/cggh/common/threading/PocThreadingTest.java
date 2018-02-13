@@ -22,6 +22,7 @@ public class PocThreadingTest {
 	public void execute () throws Exception {
 		processBeforePass ();
 		for (int snpIdx = 0; snpIdx < SNP_COUNT; snpIdx++) {
+			Thread.yield();
 			processSnp(snpIdx);
 		}
 		processAfterPass ();

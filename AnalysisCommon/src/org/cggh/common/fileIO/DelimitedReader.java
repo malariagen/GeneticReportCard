@@ -5,9 +5,12 @@ import java.io.*;
 public class DelimitedReader extends LineNumberReader {
 	
     public static int DEFAULT_BUFFER_SIZE = 8192;
+    
+    public static String DEFAULT_DELIMITER = ",";
+    public static String DEFAULT_COMMENT_PREFIX = "#";
 	
-	private String   delimiter     = ",";
-	private String   commentPrefix = "#";
+	private String   delimiter     = DEFAULT_DELIMITER;
+	private String   commentPrefix = DEFAULT_COMMENT_PREFIX;
 	private String   currLine = null;
 	private String[] currFields = null;
 	

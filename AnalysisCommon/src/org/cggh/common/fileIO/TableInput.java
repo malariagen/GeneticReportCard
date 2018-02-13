@@ -12,11 +12,17 @@ public class TableInput {
 	private String[] fieldNames;
 	
 	public TableInput (InputTextStore inTextStore) throws AnalysisException {
+		this (inTextStore, "\t", DelimitedReader.DEFAULT_COMMENT_PREFIX);
+	}
+	
+	public TableInput (InputTextStore inTextStore, String delimiter, String commentPrefix) throws AnalysisException {
 		
 		// Create a Tab-separated text file line-by-line reader
 		this.inTextStore = inTextStore;
 		try {
 			r = new TabFileReader(inTextStore.getReader());
+			r.setDelimiter(delimiter);
+			r.setCommentPrefix(commentPrefix);
 		} catch (IOException e) {
 			throw new AnalysisException("Error opening datafile " + inTextStore.getPath() +	": "+e);
 		}
@@ -30,6 +36,10 @@ public class TableInput {
 	
 	public TableInput (File inFile) throws AnalysisException {
 		this(new InputTextStore (inFile.getParentFile(), inFile.getName()));
+	}
+	
+	public TableInput (File inFile, String delimiter, String commentPrefix) throws AnalysisException {
+		this(new InputTextStore (inFile.getParentFile(), inFile.getName()), delimiter, commentPrefix);
 	}
 	
 	public String[] getFieldNames () {
@@ -64,8 +74,6 @@ public class TableInput {
 	public String[] getCurrentLineFields () {
 		return r.getCurrentLineFields();
 	}
-	
-
 
 	public void close() throws AnalysisException {
 		try {
