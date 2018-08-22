@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Set;
 
 public class LabelCounters {
 	
@@ -44,19 +45,26 @@ public class LabelCounters {
 	}
 	
 	public void setCount (String label, int count) {
-		LabelCounter counter = counterTable.get(label);
-		if (counter == null) {
-			counter = createCounter(label);
-		}
+		LabelCounter counter = getCounterForced(label);
 		counter.setCount(count);
 	}
 	
 	public void increment (String label) {
+		LabelCounter counter = getCounterForced(label);
+		counter.increment();
+	}
+	
+	public void add (String label, int count) {
+		LabelCounter counter = getCounterForced(label);
+		counter.add(count);
+	}
+	
+	private LabelCounter getCounterForced (String label) {
 		LabelCounter counter = counterTable.get(label);
 		if (counter == null) {
 			counter = createCounter(label);
 		}
-		counter.increment();
+		return counter;
 	}
 	
 	public void clear() {
@@ -72,6 +80,12 @@ public class LabelCounters {
 				it.remove();
 			}
 		}
+	}
+	
+	public String[] getLabels () {
+		Set<String> labelSet = counterTable.keySet();
+		String[] labels = labelSet.toArray(new String[labelSet.size()]);
+		return labels;
 	}
 	
 	public LabelCounter[] getSortedCounters () {

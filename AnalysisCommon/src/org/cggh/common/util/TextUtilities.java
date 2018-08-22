@@ -17,6 +17,22 @@ public class TextUtilities {
 		return result;
 	}
 
+	public static String[] intArrayToStringArray (int[] value) {
+		String[] result = new String[value.length];
+		for (int i = 0; i < result.length; i++) {
+			result[i] = Integer.toString(value[i]);
+		}
+		return result;
+	}
+	
+	public static String[] doubleArrayToStringArray (double[] value) {
+		String[] result = new String[value.length];
+		for (int i = 0; i < result.length; i++) {
+			result[i] = Double.toString(value[i]);
+		}
+		return result;
+	}
+	
 	public static String stringArrayToString (String[] array) {
 		return stringArrayToString (array, ",");
 	}
@@ -79,8 +95,6 @@ public class TextUtilities {
 		}
 		return result;
 	}
-	
-	
 	
     public static String[] split (String s, int lineLength) {
         int sLength = s.length();

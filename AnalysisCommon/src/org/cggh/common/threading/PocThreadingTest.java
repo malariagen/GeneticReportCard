@@ -15,7 +15,7 @@ public class PocThreadingTest {
 	private static final int COMPUTE_DELAY = 200;
 	
 	private DataStorage store;
-	private ThreadedTaskManager ttm;
+	private ParallelExecutableManager ttm;
 	private DistanceProcessTask currentTask = null;
 	
 	
@@ -30,7 +30,7 @@ public class PocThreadingTest {
 	
 	public void processBeforePass () throws AnalysisException {
 		store = new DataStorage(new File ("D:\\temp\\pco.txt"));
-		ttm = new ThreadedTaskManager(THREAD_COUNT);
+		ttm = new ParallelExecutableManager(THREAD_COUNT);
 		ttm.setMaxTasksInQueue(MAX_TASKS_IN_QUEUE);
 		ttm.startExecution();
 	}

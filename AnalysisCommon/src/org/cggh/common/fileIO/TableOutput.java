@@ -141,6 +141,12 @@ public class TableOutput {
 		}
 	}
 	
+	public void appendMultipleValues (int[] values) throws AnalysisException {
+		for (int i = 0; i < values.length; i++) {
+			appendValue(values[i]);
+		}
+	}
+	
 	public void appendValue (int value) throws AnalysisException {
 		appendFieldSeparator(sb);
 		if (value == Integer.MIN_VALUE) {
