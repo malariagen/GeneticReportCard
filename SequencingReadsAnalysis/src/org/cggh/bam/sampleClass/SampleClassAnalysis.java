@@ -1,6 +1,7 @@
 package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.*;
+import org.cggh.bam.genotyping.AlleleValidator;
 import org.cggh.bam.target.*;
 import org.cggh.bam.target.alleleClasses.*;
 import org.cggh.bam.target.alleleClasses.SampleAlleleClassAnalyzer.*;
@@ -22,8 +23,8 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	
 	private HashMap<String,Integer>[]    alleleIdxTables;
 	
-	public SampleClassAnalysis (File configFile, File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException  {
-		super (refFastaFile, chrMapFile, outRootFolder);
+	public SampleClassAnalysis (File configFile, File refFastaFile, File outRootFolder) throws AnalysisException  {
+		super (refFastaFile, outRootFolder);
 
 		// Parse configuration file
 		config = new SampleClassConfig (configFile);
@@ -61,7 +62,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	private static final String[] LISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","SampleClass"};
 	private static final String[] UNLISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","Proportion","Closest","Diff"};
 	
-	private Genotyper genotyper = new Genotyper.GenotyperReadCountProportion(0.05); // 5% total reads is the min to call an allele
+	private AlleleValidator validator = new AlleleValidator.AlleleValidatorByReadCountProportion(0.05); // 5% total reads is the min to call an allele
 	
 	/*
 	 * Write out the results for this sample into two files: one of counts of listed sample class-specific alleles,
@@ -90,7 +91,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 				for (int aIdx = 0; aIdx < alleles.length; aIdx++) {
 					
 					int alleleReads = alleleCounters[aIdx].getCount();
-					boolean isValidAllele = genotyper.isValidAllele(alleleReads, totalReads);
+					boolean isValidAllele = validator.isValidAllele(alleleReads, totalReads);
 					String classStr = isValidAllele ? alleleCounters[aIdx].getLabel() : "-";
 					
 					alleleSetOut.newRow();
@@ -713,21 +714,19 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	public static class SingleSample {
 		
 		public static void main(String[] args) {
-			if (args.length < 6) {
-				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$SingleSample <configFile> <sampleName> <bamFile> <chrMap> <refFasta> <chrMapFile> <rootFolder>");
+			if (args.length < 5) {
+				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$SingleSample <configFile> <sampleName> <bamFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
 			String sampleId = args[1];					log.info("SampleId: "+sampleId);
 			File sampleBamFile = new File(args[2]);	    log.info("SampleBamFile: "+sampleBamFile.getAbsolutePath());
-			String sampleChrMapName = args[3];			log.info("SampleChrMapName: "+sampleChrMapName);
-			File refFastaFile = new File(args[4]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[5]);		log.info("ChrMapFile: "+chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[6]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			File refFastaFile = new File(args[3]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
+			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			
 			try {
-				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
-				Sample sample = new Sample (sampleId, sampleBamFile, sampleChrMapName);
+				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, rootFolder);
+				Sample sample = new Sample (sampleId, sampleBamFile);
 				task.analyzeSample(sample);	
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
@@ -743,20 +742,19 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	 */
 	public static class MultiSample {
 		public static void main(String[] args) {
-			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
+			if (args.length < 4) {
+				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
 			File sampleListFile = new File(args[1]);	log.info("SampleListFile: "+sampleListFile.getAbsolutePath());
 			File refFastaFile = new File(args[2]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[3]);		log.info("ChrMapFile: "+chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			File rootFolder = new File(args[3]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 
 			int maxThreads = Integer.parseInt(System.getProperty("maxThreads","0"));
 			
 			try {	
-				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, rootFolder);
 				MultiSampleAnalysis multi = new MultiSampleAnalysis(sampleListFile, maxThreads);
 				multi.execute(task);
 				task.analyzeAllSampleResults(multi.getSamples());
@@ -774,19 +772,18 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	 */
 	public static class MergeResults {
 		public static void main(String[] args) {
-			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
+			if (args.length < 4) {
+				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
 			File sampleListFile = new File(args[1]);	log.info("SampleListFile: "+sampleListFile.getAbsolutePath());
 			File refFastaFile = new File(args[2]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[3]);		log.info("ChrMapFile: "+chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			File rootFolder = new File(args[3]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			
 			try {
 				Sample[] samples = new SampleList(sampleListFile, false).getSamples();
-				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeAllSampleResults(samples);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

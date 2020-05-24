@@ -147,6 +147,12 @@ public class TableOutput {
 		}
 	}
 	
+	public void appendMultipleValues (double[] values) throws AnalysisException {
+		for (int i = 0; i < values.length; i++) {
+			appendValue(values[i]);
+		}
+	}
+	
 	public void appendValue (int value) throws AnalysisException {
 		appendFieldSeparator(sb);
 		if (value == Integer.MIN_VALUE) {
@@ -197,7 +203,11 @@ public class TableOutput {
 	}
 
 	public void setFloatFormat (NumberFormat formatter) throws AnalysisException {
-		this.floatFormat = formatter;
+		if (formatter == null) {
+			setMaximumFractionDigits (defaultMaxDecimalDigits);
+		} else {
+			floatFormat = formatter;
+		}
 	}
 		
 	public void setMaximumFractionDigits (int maxFractionDigits) throws AnalysisException {

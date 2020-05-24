@@ -50,10 +50,14 @@ public class SampleReadsRetriever {
 		SamReader samReader = samReaderFactory.open(sample.getBamFile());
 		GenomeRegion readSearchInterval =  locus.getReadSearchInterval();
 		String chrName = readSearchInterval.getChromosome();
-		String mapName = sample.getBamChromosomeMap();
-		String transChrName = ChromosomeMap.getMappedChromosomeName(chrName, mapName);
+		// ==== Taking this apart ===== 
+		//String mapName = sample.getBamChromosomeMap();
+		//String transChrName = ChromosomeMap.getMappedChromosomeName(chrName, mapName);
 		//System.out.println("Locus: " + locus.name+ " - Chr: " + chrName + " - Map: "+mapName+ " - Translated: "+transChrName);
-		SAMRecordIterator it = samReader.query(transChrName, readSearchInterval.getStartPos(), readSearchInterval.getStopPos(), true);
+		//System.out.println("Query: "+transChrName+":"+readSearchInterval.getStartPos()+"-"+readSearchInterval.getStopPos());
+		//SAMRecordIterator it = samReader.query(transChrName, readSearchInterval.getStartPos(), readSearchInterval.getStopPos(), true);
+		// ==== Taking this apart ===== 
+		SAMRecordIterator it = samReader.query(chrName, readSearchInterval.getStartPos(), readSearchInterval.getStopPos(), true);
 		while (it.hasNext()) {
 			SAMRecord record = it.next();
 			// This will ignore all secondary and supplementary alignments, reads not passing vendor filters, as well as any duplicates

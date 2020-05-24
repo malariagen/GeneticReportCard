@@ -7,9 +7,9 @@ import org.cggh.common.textStore.InputTextStore;
 
 public class TableInput {
 	
-	private InputTextStore inTextStore;
-	private TabFileReader r = null;
-	private String[] fieldNames;
+	protected InputTextStore inTextStore;
+	protected TabFileReader r = null;
+	protected String[] fieldNames;
 	
 	public TableInput (InputTextStore inTextStore) throws AnalysisException {
 		this (inTextStore, "\t", DelimitedReader.DEFAULT_COMMENT_PREFIX);
@@ -28,7 +28,11 @@ public class TableInput {
 		}
 		
 		// Read the fields from the next line
-		fieldNames = getNextValidLine();
+		try {
+			fieldNames = r.getNextValidLine();
+		} catch (IOException e) {
+			throw new AnalysisException("Error reading headers from file " + inTextStore.getPath() + ": "+e);				
+		}			
 		if (fieldNames == null) {
 			throw new AnalysisException("Error opening datafile " + inTextStore.getPath() +	": no headers found");
 		}

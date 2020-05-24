@@ -1,7 +1,9 @@
 
 package org.cggh.common.counters;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+
 
 public abstract class AlleleCounter {
 	
@@ -22,6 +24,14 @@ public abstract class AlleleCounter {
 		}
 	}
 	
+	public void initialize (AlleleCount[] initCounters) {
+		reset();
+		for (int i = 0; i < initCounters.length; i++) {
+			AlleleCount ac = initCounters[i];
+			setCount(ac.allele, ac.count);
+		}
+	}
+	
 	public boolean isValidAllele(char allele) {
 		return (getIndex (allele) >= 0);
 	}
@@ -34,6 +44,10 @@ public abstract class AlleleCounter {
 	public void setCount(char allele, int newCount) {
 		int idx = getIndex(allele);
 		counts[idx].count = newCount;
+	}
+	
+	public void setCount(AlleleCount initCounter) {
+		setCount(initCounter.allele, initCounter.count);
 	}
 	
 	public void setCounts(int[] newCounts) {
@@ -58,11 +72,7 @@ public abstract class AlleleCounter {
 	 * @return
 	 */
 	public int getCumulativeCount() {
-		int cumulativeCount = 0;
-		for (int i = 0; i < counts.length; i++) {
-			cumulativeCount += counts[i].count;
-		}
-		return cumulativeCount;
+		return getCumulativeCount(this.counts);
 	}
 
 	/**
@@ -106,14 +116,11 @@ public abstract class AlleleCounter {
 		return makeAlleleCountString (counter.getSortedAlleleCounts());
 	}
 
-	
-	public static String makeAlleleCountString (AlleleCount[] counts) {
+	public static String makeAlleleCountString (AlleleCount[] uCounts) {
+		AlleleCount[] counts = removeAllelesWithNoReads (uCounts);
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < counts.length; i++) {
 			AlleleCount c = counts[i];
-			if (c.count == 0) {
-				break;
-			}
 			if (sb.length() > 0) {
 				sb.append(',');
 			}
@@ -127,6 +134,28 @@ public abstract class AlleleCounter {
 		return sb.toString();
 	}
 	
+	public static int getCumulativeCount(AlleleCount[] counts) {
+		int cumulativeCount = 0;
+		for (int i = 0; i < counts.length; i++) {
+			cumulativeCount += counts[i].count;
+		}
+		return cumulativeCount;
+	}
+
+	public static AlleleCount[] removeAllelesWithNoReads (AlleleCount[] counts) {
+		return filterAllelesByCount (counts, 1);
+	}
+
+	public static AlleleCount[] filterAllelesByCount (AlleleCount[] counts, int minCount) {
+		ArrayList<AlleleCount> list = new ArrayList<AlleleCount>();
+		for (int i = 0; i < counts.length; i++) {
+			AlleleCount c = counts[i];
+			if (c.count >= minCount) {
+				list.add(c);
+			}
+		}
+		return list.toArray(new AlleleCount[list.size()]);
+	}
 	
 	public class AlleleCount implements Comparable<AlleleCount> {
 		

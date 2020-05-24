@@ -2,6 +2,7 @@ package org.cggh.bam.barcode;
 
 import org.apache.commons.logging.*;
 import org.cggh.bam.*;
+import org.cggh.bam.genotyping.AlleleValidator;
 import org.cggh.common.counters.*;
 import org.cggh.common.counters.AlleleCounter.*;
 import org.cggh.common.exceptions.*;
@@ -36,12 +37,16 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	}
 	
 	
-	private Genotyper gt = new Genotyper.GenotyperReadCountProportion(0.05);
+	private AlleleValidator gt = new AlleleValidator.AlleleValidatorByReadCountProportion(0.05);
 	
 	public void analyzeSample(Sample sample) throws AnalysisException {
 		String sampleName = sample.getName();
 		File sampleFolder = getSampleSubfolder(outRootFolder, sampleName, false);
 		File vcfFile = new File (sampleFolder, sampleName+".vcf.gz");
+		if (!vcfFile.canRead()) {
+			log.warn("Error processing sample " + sampleName + " - file not found: " + vcfFile.getAbsolutePath());
+			return;
+		}
 		
 		Genotype[] genos = new Genotype[snps.length];
 		NtAlleleCounter counter = new NtAlleleCounter();
@@ -395,7 +400,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 			File snpListFile = new File(args[2]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
 			try {
 				BarcodeFromVcfAnalysis task = new BarcodeFromVcfAnalysis(outRootFolder, snpListFile);
-				Sample sample = new Sample (sampleName, null, null);
+				Sample sample = new Sample (sampleName, null);
 				task.analyzeSample(sample);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

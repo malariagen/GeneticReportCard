@@ -1,11 +1,17 @@
 package org.cggh.common.counters;
 
+
 public class NtAlleleCounter extends AlleleCounter {
 
 	private static final char[] ALLELES = {'A','C','G','T'};
 	
 	public NtAlleleCounter () { 
 		super(ALLELES);
+	}
+	
+	public NtAlleleCounter (AlleleCount[] initCounters) {
+		super(ALLELES);
+		initialize (initCounters);
 	}
 	
 	protected int getIndex(char allele) {

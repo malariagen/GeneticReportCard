@@ -14,7 +14,7 @@ public class MultiSampleAnalysis {
 	private int      maxThreads = 0;
 	
 	public MultiSampleAnalysis (File sampleListFile, int maxThreads) throws AnalysisException  {
-		this.samples = new SampleList(sampleListFile).getSamples();
+		this.samples = new SampleList(sampleListFile, false).getSamples();
 		this.maxThreads = maxThreads;
 	}
 	
@@ -38,10 +38,11 @@ public class MultiSampleAnalysis {
 			analysisTasks[sIdx] = new SampleAnalysisTask (analysis, samples[sIdx]);
 			pem.addTask(analysisTasks[sIdx]);
 		}
+		pem.setComplete();
 
 		// Analyze all the samples at all the loci
 		pem.startExecution();
-		pem.waitForCompletion();
+		pem.waitForThreadsCompletion();
 		
 		// Marge all the sample results files
 		//mergeSampleResultFiles(samples);

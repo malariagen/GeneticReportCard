@@ -7,6 +7,7 @@ import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
 import org.cggh.common.fileIO.*;
 import org.cggh.common.sequence.*;
+import org.cggh.common.util.FileUtilities;
 import org.apache.commons.logging.*;
 import java.io.*;
 import java.util.*;
@@ -18,8 +19,8 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	
 	private GrcConfig config;
 	
-	public GrcAnalysis (File configFile, File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException  {
-		super (refFastaFile, chrMapFile, outRootFolder);
+	public GrcAnalysis (File configFile, File refFastaFile, File outRootFolder) throws AnalysisException  {
+		super (refFastaFile, outRootFolder);
 		
 		// Parse configuration file
 		config = new GrcConfig (configFile);
@@ -40,11 +41,24 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			outputSampleResults (sr);
 			
 		} catch (Exception e) {
-			log.info("Aborting " + sample.getName());
-			log.error("Error processing BAM file for sample "+ sample.getName() + ": "+e);
+			String sampleName = sample.getName();
+			String excMsg = e.toString();
+			log.info("Aborting " + sampleName);
+			log.error("Error processing BAM file for sample "+ sampleName + ": "+excMsg);
+			try {
+				recordSampleFailure (sampleName, excMsg);
+			} catch (IOException e1) {}
 			e.printStackTrace();
 		}
 		log.info("Completed " + sample.getName());
+	}
+	
+	private synchronized void recordSampleFailure (String sampleName, String excMsg) throws AnalysisException, IOException {
+		File errorFile = new File (outRootFolder, "FailedSamples.tab");
+		if (!errorFile.exists()) {
+			FileUtilities.writeFileContent("Sample\tError", errorFile);
+		}
+		FileUtilities.appendFileContent("\n"+sampleName+"\t"+excMsg, errorFile);
 	}
 	
 	private static final String[] LOCUS_COUNTS_HEADERS = new String[] {"Sample","Locus","Aligned","Misaligned"};
@@ -434,21 +448,19 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	public static class SingleSample {
 		
 		public static void main(String[] args) {
-			if (args.length < 7) {
+			if (args.length < 5) {
 				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$SingleSample <configFile> <sampleName> <bamFile> <chrMap> <refFasta> <chrMapFile> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
 			String sampleId = args[1];					log.info("SampleId: "+sampleId);
 			File sampleBamFile = new File(args[2]);	    log.info("SampleBamFile: "+sampleBamFile.getAbsolutePath());
-			String sampleChrMapName = args[3];			log.info("SampleChrMapName: "+sampleChrMapName);
-			File refFastaFile = new File(args[4]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[5]);		log.info("ChrMapFile: "+chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[6]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			File refFastaFile = new File(args[3]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
+			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			
 			try {
-				Sample sample = new Sample (sampleId, sampleBamFile, sampleChrMapName);
-				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				Sample sample = new Sample (sampleId, sampleBamFile);
+				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeSample(sample);	
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
@@ -465,22 +477,21 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	 */
 	public static class MultiSample {
 		public static void main(String[] args) {
-			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
+			if (args.length < 4) {
+				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
 			File sampleListFile = new File(args[1]);	log.info("SampleListFile: "+sampleListFile.getAbsolutePath());
 			File refFastaFile = new File(args[2]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[3]);		log.info("ChrMapFile: "+chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			File rootFolder = new File(args[3]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 
 			
 			int maxThreads = Integer.parseInt(System.getProperty("maxThreads","0"));
 			
 			try {	
 				MultiSampleAnalysis multi = new MultiSampleAnalysis(sampleListFile, maxThreads);
-				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, rootFolder);
 				multi.execute(task);
 				task.analyzeAllSampleResults(multi.getSamples());
 			} catch (Exception e) {
@@ -497,18 +508,17 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	 */
 	public static class MergeResults {
 		public static void main(String[] args) {
-			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
+			if (args.length < 4) {
+				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
 			File sampleListFile = new File(args[1]);	log.info("SampleListFile: "+sampleListFile.getAbsolutePath());
 			File refFastaFile = new File(args[2]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[3]);		log.info("ChrMapFile: "+chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			File rootFolder = new File(args[3]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			try {
 				Sample[] samples = new SampleList(sampleListFile, false).getSamples();
-				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeAllSampleResults(samples);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

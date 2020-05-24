@@ -1,6 +1,7 @@
 package org.cggh.bam.heteroallelic;
 
 import org.cggh.bam.*;
+import org.cggh.bam.genotyping.AlleleValidator;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
 import org.cggh.common.fileIO.*;
@@ -30,15 +31,15 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	private HeteroallelicConfig   config;
 	private SamReaderFactory      samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	private SampleLocusLogFile    msgLog;
-	private Genotyper genotyper = new Genotyper.GenotyperReadCountProportion(0.05); // 5% total reads is the min to call an allele
+	private AlleleValidator validator = new AlleleValidator.AlleleValidatorByReadCountProportion(0.05); // 5% total reads is the min to call an allele
 	
 
 	private static final String[] CALL_FILE_HEADERS = new String[] { "Sample", "Locus", "Call", "Mutation", "MissingCodonCallsProp", "MedianReadCount", "MeanReadCount" };
 	private static final String[] MULTI_MUTANT_FILE_HEADERS = new String[] { "Sample", "Locus", "Alleles", "ReadCount" };
 	private static final String[] MESSAGE_LOG_FILE_HEADERS = new String[] { "Message", "Allele", "ReadCount" };
 
-	public HeteroallelicAnalysis(File configFile, File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException {
-		super(refFastaFile, chrMapFile, outRootFolder);
+	public HeteroallelicAnalysis(File configFile, File refFastaFile, File outRootFolder) throws AnalysisException {
+		super(refFastaFile, outRootFolder);
 		config = new HeteroallelicConfig(configFile);
 	}
 	
@@ -278,7 +279,9 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 			// Get the locus ref NT sequence
 			GenomeRegion locusregion = locus.getRegion();
 			chrName = locusregion.getChromosome();
-			chrName = ChromosomeMap.getMappedChromosomeName(chrName, sample.getBamChromosomeMap());
+			// ==== Taking this apart ===== 
+			//chrName = ChromosomeMap.getMappedChromosomeName(chrName, sample.getBamChromosomeMap());
+			// ==== Taking this apart ===== 
 			Sequence chrRefSeq = ReferenceGenome.getChrSequence(chrName);
 			startPos = locusregion.getStartPos();
 			endPos = locusregion.getStopPos();
@@ -369,7 +372,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 			// Count the alleles
 			for (int i = 0; i < counts.length; i++) {
 				int alleleReads = counts[i].getCount();
-				boolean isValidAllele = genotyper.isValidAllele(alleleReads, totalReads);
+				boolean isValidAllele = validator.isValidAllele(alleleReads, totalReads);
 				if (!isValidAllele) {
 					break;
 				}
@@ -594,23 +597,22 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	 */
 	public static class SingleSample {
 		public static void main(String[] args) {
-			if (args.length < 7) {
-				log.error("Usage: org.cggh.bam.heteroallelic.HeteroallelicAnalysis$SingleSample <configFile> <sampleName> <bamFile> <chrMap> <refFasta> <chrMapFile> <rootFolder>");
+			if (args.length < 5) {
+				log.error("Usage: org.cggh.bam.heteroallelic.HeteroallelicAnalysis$SingleSample <configFile> <sampleName> <bamFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);			log.info("ConfigFile: " + configFile.getAbsolutePath());
 			String sampleId = args[1];						log.info("SampleId: " + sampleId);
 			File sampleBamFile = new File(args[2]);			log.info("SampleBamFile: " + sampleBamFile.getAbsolutePath());
-			String sampleChrMapName = args[3];				log.info("SampleChrMapName: " + sampleChrMapName);
-			File refFastaFile = new File(args[4]);			log.info("RefFastaFile: " + refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[5]);			log.info("ChrMapFile: " + chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[6]);			log.info("RootFolder: " + rootFolder.getAbsolutePath());
+			File refFastaFile = new File(args[3]);			log.info("RefFastaFile: " + refFastaFile.getAbsolutePath());
+			File rootFolder = new File(args[4]);			log.info("RootFolder: " + rootFolder.getAbsolutePath());
 			try {
-				Sample sample = new Sample(sampleId, sampleBamFile, sampleChrMapName);
-				HeteroallelicAnalysis task = new HeteroallelicAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				Sample sample = new Sample(sampleId, sampleBamFile);
+				HeteroallelicAnalysis task = new HeteroallelicAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeSample(sample);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
+				e.printStackTrace();
 				return;
 			}
 			log.info("Exiting");
@@ -623,26 +625,26 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	 */
 	public static class MultiSample {
 		public static void main(String[] args) {
-			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.heteroallelic.HeteroallelicAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
+			if (args.length < 4) {
+				log.error("Usage: org.cggh.bam.heteroallelic.HeteroallelicAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);			log.info("ConfigFile: " + configFile.getAbsolutePath());
 			File sampleListFile = new File(args[1]);		log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
 			File refFastaFile = new File(args[2]);			log.info("RefFastaFile: " + refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[3]);			log.info("ChrMapFile: " + chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);			log.info("RootFolder: " + rootFolder.getAbsolutePath());
+			File rootFolder = new File(args[3]);			log.info("RootFolder: " + rootFolder.getAbsolutePath());
 			
 			
 			int maxThreads = Integer.parseInt(System.getProperty("maxThreads", "0"));
 			
 			try {
 				MultiSampleAnalysis multi = new MultiSampleAnalysis(sampleListFile, maxThreads);
-				HeteroallelicAnalysis task = new HeteroallelicAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				HeteroallelicAnalysis task = new HeteroallelicAnalysis(configFile, refFastaFile, rootFolder);
 				multi.execute((SampleAnalysis) task);
 				task.analyzeAllSampleResults(multi.getSamples());
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
+				e.printStackTrace();
 				return;
 			}
 			log.info("Exiting");
@@ -655,22 +657,22 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	 */
 	public static class MergeResults {
 		public static void main(String[] args) {
-			if (args.length < 5) {
+			if (args.length < 4) {
 				log.error("Usage: org.cggh.bam.heteroallelic.HeteroallelicAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <chrMapFile> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);			log.info("ConfigFile: " + configFile.getAbsolutePath());
 			File sampleListFile = new File(args[1]);		log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
 			File refFastaFile = new File(args[2]);			log.info("RefFastaFile: " + refFastaFile.getAbsolutePath());
-			File chrMapFile = new File(args[3]);			log.info("ChrMapFile: " + chrMapFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);			log.info("RootFolder: " + rootFolder.getAbsolutePath());
+			File rootFolder = new File(args[3]);			log.info("RootFolder: " + rootFolder.getAbsolutePath());
 			
 			try {
 				Sample[] samples = new SampleList(sampleListFile, false).getSamples();
-				HeteroallelicAnalysis task = new HeteroallelicAnalysis(configFile, refFastaFile, chrMapFile, rootFolder);
+				HeteroallelicAnalysis task = new HeteroallelicAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeAllSampleResults(samples);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
+				e.printStackTrace();
 				return;
 			}
 			log.info("Exiting");

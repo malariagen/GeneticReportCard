@@ -1,7 +1,6 @@
 package org.cggh.common.fileIO;
 
 import org.cggh.common.exceptions.AnalysisException;
-import org.cggh.common.fileIO.TabFileReader;
 import org.cggh.common.textStore.InputTextStore;
 
 import java.io.*;

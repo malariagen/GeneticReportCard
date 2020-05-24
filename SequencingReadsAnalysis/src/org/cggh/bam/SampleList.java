@@ -30,11 +30,11 @@ public class SampleList {
 	private Sample[] readSamples() throws AnalysisException {
 		ArrayList<Sample> sampleList = new ArrayList<Sample>();
 		ColumnFileReader cfr = new ColumnFileReader(new InputTextStore(sampleListFile));
-		String[] colNames = new String[]{"Sample","BamFile","ChrMap"};
+		String[] colNames = new String[]{"Sample","BamFile"};
 		ColumnFileReader.ColumnReader cr = cfr.getColumnReader(colNames);
 		while (cfr.nextRecord()) {
 			String[] values = cr.getValues();
-			Sample s = new Sample(values[0], new File(values[1]), values[2]);
+			Sample s = new Sample(values[0], new File(values[1]));
 			if (checkBams && !s.getBamFile().canRead()) {
 				throw new AnalysisException("Error getting samples list: BAM file " + values[1] + " cannot be read.");
 			}

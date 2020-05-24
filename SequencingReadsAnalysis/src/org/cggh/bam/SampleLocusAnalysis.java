@@ -10,8 +10,8 @@ public abstract class SampleLocusAnalysis extends SampleAnalysis {
 	protected String[] locusNames;
 	protected HashMap<String,Integer> locusIdxTable = new HashMap<String,Integer>();
 	
-	public SampleLocusAnalysis (File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException  {
-		super (refFastaFile, chrMapFile, outRootFolder);		
+	public SampleLocusAnalysis (File refFastaFile, File outRootFolder) throws AnalysisException  {
+		super (refFastaFile, outRootFolder);		
 	}
 
 	protected void registerLoci (Locus[] loci) {

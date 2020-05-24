@@ -144,9 +144,20 @@ public class BaseConfig {
 		}
 		return propValues;
 	}
+
+	protected String[] getStringListProperty (String propName, String[] defaultValues) throws AnalysisException {
+		String[] values = getStringListProperty (propName);
+		if (values == null) {
+			return defaultValues;
+		}
+		return values;
+	}
 	
 	protected int[] getIntegerListProperty (String propName) throws AnalysisException {
 		String[] propValues = getStringListProperty (propName);
+		if (propValues == null) {
+			return null;
+		}
 		int[] values = new int[propValues.length];
 		for (int i = 0; i < propValues.length; i++) {
 			try {
@@ -158,8 +169,19 @@ public class BaseConfig {
 		return values;
 	}
 	
+	protected int[] getIntegerListProperty (String propName, int[] defaultValues) throws AnalysisException {
+		int[] values = getIntegerListProperty (propName);
+		if (values == null) {
+			return defaultValues;
+		}
+		return values;
+	}
+	
 	protected double[] getDoubleListProperty (String propName) throws AnalysisException {
 		String[] propValues = getStringListProperty (propName);
+		if (propValues == null) {
+			return null;
+		}
 		double[] values = new double[propValues.length];
 		for (int i = 0; i < propValues.length; i++) {
 			try {
@@ -167,6 +189,14 @@ public class BaseConfig {
 			} catch (Exception e) {
 				throw new AnalysisException("Error parsing item #" + (i+1) + " (value='" + propValues[i] + "') in double list for property '" + propName +"'");
 			}
+		}
+		return values;
+	}
+	
+	protected double[] getDoubleListProperty (String propName, double[] defaultValues) throws AnalysisException {
+		double[] values = getDoubleListProperty (propName);
+		if (values == null) {
+			return defaultValues;
 		}
 		return values;
 	}

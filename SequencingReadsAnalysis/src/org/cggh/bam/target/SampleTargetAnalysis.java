@@ -12,8 +12,8 @@ public abstract class SampleTargetAnalysis extends SampleLocusAnalysis {
 	protected String[]       allTargetNames;
 	protected HashMap<String,Integer> targetIdxTable = new HashMap<String,Integer>();
 
-	public SampleTargetAnalysis (File refFastaFile, File chrMapFile, File outRootFolder) throws AnalysisException  {
-		super (refFastaFile, chrMapFile, outRootFolder);
+	public SampleTargetAnalysis (File refFastaFile, File outRootFolder) throws AnalysisException  {
+		super (refFastaFile, outRootFolder);
 	}
 	
 	protected void registerLoci (Locus[] loci) {
