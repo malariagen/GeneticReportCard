@@ -18,21 +18,36 @@ public class MappedRead {
 	private boolean isReversed;
 	private int     mappingStatus;
 	
-	public MappedRead(SAMRecord record, Locus locusConfig, Anchor anchor, int anchorPos, int mappingStatus) {
-		this(record, locusConfig, (anchor.getPos().getPos()-anchorPos), mappingStatus);
+	public MappedRead(SAMRecord record, Locus locusConfig, Anchor anchor, int anchorPos) {
+		this(record, locusConfig, (anchor.getPos().getPos()-anchorPos));
 	}
 	
-	public MappedRead(SAMRecord record, Locus locus, int readStartPos, int mappingStatus) {
+	public MappedRead(SAMRecord record, Locus locus, int readStartPos) {
 		this.id = record.getReadName();
 		this.sequence = record.getReadString();
 		this.quality = record.getBaseQualityString();
 		this.startPos = readStartPos;
+		this.isReversed = record.getReadNegativeStrandFlag();
+		// Trim SAM string line terminator if there is one
 		this.samString = record.getSAMString();
-		if (samString.charAt(samString.length()-1) == '\n') { // Trim line terminator if there is one
+		if (samString.charAt(samString.length()-1) == '\n') { 
 			samString = samString.substring(0, samString.length()-1);
 		}
-		this.isReversed = record.getReadNegativeStrandFlag();
+		setMappingStatus (MAPPED);
+	}
+	
+	public void unmap () {
+		setMappingStatus (UNMAPPED);
+		this.startPos = -1;
+	}
+	
+	public void setMappingStatus (int mappingStatus) {
 		this.mappingStatus = mappingStatus;
+	}
+	
+	public void updateSequence (String sequence, String quality) {
+		this.sequence = sequence;
+		this.quality = quality;
 	}
 	
 	public String getId() {
@@ -42,6 +57,7 @@ public class MappedRead {
 	public String getSequence() {
 		return sequence;
 	}
+
 
 	public String getQuality() {
 		return quality;

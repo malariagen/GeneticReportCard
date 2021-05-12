@@ -91,7 +91,7 @@ public abstract class AlleleCounter {
 	}
 
 	/**
-	 * Returns the alleles counters, in decreasing order by number of reads.
+	 * Returns the alleles counters in decreasing order by number of reads (including those with 0 reads).
 	 * The order is determined by getSortedAlleleCounts()
 	 * The order for alleles with the same number of reads is undefined,
 	 * but specific behaviours may be implemented by subclasses.
@@ -112,28 +112,15 @@ public abstract class AlleleCounter {
 		return alleleCounts;
 	}
 	
+	public AlleleCount getAlleleCount(char allele) {
+		int idx = getIndex(allele);
+		return counts[idx];
+	}
+
 	public static String makeAlleleCountString (AlleleCounter counter) {
 		return makeAlleleCountString (counter.getSortedAlleleCounts());
 	}
 
-	public static String makeAlleleCountString (AlleleCount[] uCounts) {
-		AlleleCount[] counts = removeAllelesWithNoReads (uCounts);
-		StringBuffer sb = new StringBuffer();
-		for (int i = 0; i < counts.length; i++) {
-			AlleleCount c = counts[i];
-			if (sb.length() > 0) {
-				sb.append(',');
-			}
-			sb.append(c.allele);
-			sb.append(':');
-			sb.append(c.count);
-		}
-		if (sb.length() == 0) {
-			sb.append('-');
-		}
-		return sb.toString();
-	}
-	
 	public static int getCumulativeCount(AlleleCount[] counts) {
 		int cumulativeCount = 0;
 		for (int i = 0; i < counts.length; i++) {
@@ -157,6 +144,46 @@ public abstract class AlleleCounter {
 		return list.toArray(new AlleleCount[list.size()]);
 	}
 	
+	public static String makeAlleleCountString (AlleleCount[] uCounts) {
+		AlleleCount[] acs = removeAllelesWithNoReads (uCounts);
+		StringBuffer sb = new StringBuffer();
+		appendAlleleCountString (sb, acs);
+		if (sb.length() == 0) {
+			sb.append('-');
+		}
+		return sb.toString();
+	}
+	
+	public static String makeAlleleCountString (AlleleCount ac) {
+		StringBuffer sb = new StringBuffer();
+		appendAlleleCountString (sb, ac);
+		if (sb.length() == 0) {
+			sb.append('-');
+		}
+		return sb.toString();
+	}
+	
+	public static void appendAlleleCountString (StringBuffer sb, AlleleCount[] acs) {
+		if (acs != null) {
+			for (int i = 0; i < acs.length; i++) {
+				AlleleCount ac = acs[i];
+				if (sb.length() > 0) {
+					sb.append(',');
+				}
+				appendAlleleCountString (sb, ac);
+			}
+		}
+	}
+	
+	public static void appendAlleleCountString (StringBuffer sb, AlleleCount ac) {
+		if (ac != null) {
+			sb.append(ac.allele);
+			sb.append(':');
+			sb.append(ac.count);
+			return;
+		}
+	}
+
 	public class AlleleCount implements Comparable<AlleleCount> {
 		
 		char allele;
@@ -178,7 +205,7 @@ public abstract class AlleleCounter {
 		public int getCount () {
 			return count;
 		}
-
+		
 		@Override
 		public int compareTo(AlleleCount o) {
 			return o.count - count;  // Reverse order

@@ -5,21 +5,24 @@ import org.cggh.common.counters.*;
 
 public class SampleTargetResult {
 
-	private Target        target;
-	private Sample        sample;
-	private LabelCounters ntAlleleCounters;
-	
+	private Target          target;
+	private Sample          sample;
+	private SampleCall      ntCall;
+	private AminoSampleCall aaCall;
+	private LabelCounters   ntAlleleCounters;
+	private int             lowQualityCount;
 
-	public SampleTargetResult(Target target, Sample sample) {
+	public SampleTargetResult(Target target, Sample sample, SampleCall ntCall, AminoSampleCall aaCall, LabelCounters ntCounters, int lowQualityCount) {
 		this.target = target;
 		this.sample = sample;
-		this.ntAlleleCounters = new LabelCounters();
+		this.ntCall = ntCall;
+		this.aaCall = aaCall;
+		this.ntAlleleCounters = ntCounters;
+		this.lowQualityCount = lowQualityCount;
 	}
 
-	public SampleTargetResult(Target target, Sample sample, LabelCounters ntCounters) {
-		this.target = target;
-		this.sample = sample;
-		this.ntAlleleCounters = ntCounters;
+	public SampleTargetResult(Target target, Sample sample) {
+		this(target, sample, SampleCall.makeMissingCall(), AminoSampleCall.makeMissingCall(), new LabelCounters(), 0);
 	}
 
 	public Target getTarget() {
@@ -30,6 +33,18 @@ public class SampleTargetResult {
 		return sample;
 	}
 
+	public SampleCall getNtCall() {
+		return ntCall;
+	}
+
+	public AminoSampleCall getAminoCall() {
+		return aaCall;
+	}
+
+	public int getLowQualityCount() {
+		return lowQualityCount;
+	}
+	
 	public LabelCounters getNtAlleleCounters() {
 		return ntAlleleCounters;
 	}

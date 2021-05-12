@@ -34,8 +34,12 @@ public class BaseConfig {
 	 */			
 	protected String getProperty (String propName) throws AnalysisException {
 		String propValue = configProperties.getProperty(propName);
-		if ((propValue != null) && (propValue.trim().isEmpty())) {
-			propValue = null;
+		if (propValue == null) {
+			return null;
+		}
+		propValue = propValue.trim();
+		if (propValue.isEmpty()) {
+			return null;
 		}
 		return propValue;
 	}
@@ -48,14 +52,20 @@ public class BaseConfig {
 		return propValue;
 	}
 	
-	protected boolean getBooleanProperty (String propName, boolean defaultValue) throws AnalysisException {
-		String propValueStr = configProperties.getProperty(propName, new Boolean(defaultValue).toString());
+	// *****************************************************************************
+	// Boolean Properties
+	// *****************************************************************************
+	protected boolean getBooleanProperty (String propName) throws AnalysisException {
+		String propValueStr = getProperty(propName);
 		return parseBooleanProperty (propName, propValueStr);
 	}
-	
-	protected boolean getBooleanProperty (String propName) throws AnalysisException {
-		String propValueStr = configProperties.getProperty(propName);
-		return parseBooleanProperty (propName, propValueStr);
+	protected boolean getBooleanProperty (String propName, boolean defaultValue) throws AnalysisException {
+		boolean propValue = defaultValue;
+		String propValueStr = getProperty(propName);
+		if (propValueStr != null) {
+			propValue = parseBooleanProperty (propName, propValueStr);
+		}
+		return propValue;
 	}
 	private boolean parseBooleanProperty (String propName, String propValueStr) throws AnalysisException {
 		if (propValueStr == null) {
@@ -70,14 +80,20 @@ public class BaseConfig {
 		throw new AnalysisException ("Bad true/false value for property '" + propName +"': "+propValueStr);
 	}
 
-	
-	protected int getIntProperty (String propName, int defaultValue) throws AnalysisException {
-		String propValueStr = configProperties.getProperty(propName, Integer.toString(defaultValue));
+	// *****************************************************************************
+	// Integer Properties
+	// *****************************************************************************
+	protected int getIntProperty (String propName) throws AnalysisException {
+		String propValueStr = getProperty(propName);
 		return parseIntProperty (propName, propValueStr);		
 	}
-	protected int getIntProperty (String propName) throws AnalysisException {
-		String propValueStr = configProperties.getProperty(propName);
-		return parseIntProperty (propName, propValueStr);		
+	protected int getIntProperty (String propName, int defaultValue) throws AnalysisException {
+		int propValue = defaultValue;
+		String propValueStr = getProperty(propName);
+		if (propValueStr != null) {
+			propValue = parseIntProperty (propName, propValueStr);
+		}
+		return propValue;		
 	}
 	private int parseIntProperty (String propName, String propValueStr) throws AnalysisException {
 		if (propValueStr == null) {
@@ -91,14 +107,20 @@ public class BaseConfig {
 		}
 	}
 
-	
-	protected double getDoubleProperty (String propName, double defaultValue) throws AnalysisException {
-		String propValueStr = configProperties.getProperty(propName, Double.toString(defaultValue));
+	// *****************************************************************************
+	// Double Properties
+	// *****************************************************************************
+	protected double getDoubleProperty (String propName) throws AnalysisException {
+		String propValueStr = getProperty(propName);
 		return parseDoubleProperty (propName, propValueStr);		
 	}
-	protected double getDoubleProperty (String propName) throws AnalysisException {
-		String propValueStr = configProperties.getProperty(propName);
-		return parseDoubleProperty (propName, propValueStr);		
+	protected double getDoubleProperty (String propName, double defaultValue) throws AnalysisException {
+		double propValue = defaultValue;
+		String propValueStr = getProperty(propName);
+		if (propValueStr != null) {
+			propValue = parseDoubleProperty (propName, propValueStr);
+		}
+		return propValue;			
 	}
 	private double parseDoubleProperty (String propName, String propValueStr) throws AnalysisException {
 		if (propValueStr == null) {
@@ -112,10 +134,12 @@ public class BaseConfig {
 		}
 	}
 	
+	// *****************************************************************************
+	// Double Properties
+	// *****************************************************************************
 	protected File getFileProperty (String propName, boolean checkExists) throws AnalysisException {
 		return (getFileProperty (propName, null, checkExists));
 	}
-	
 	protected File getFileProperty (String propName, File parent, boolean checkExists) throws AnalysisException {
 		String fileName = getMandatoryProperty(propName);
 		File f = new File (parent, fileName);
@@ -124,7 +148,6 @@ public class BaseConfig {
 		}
 		return f;
 	}
-	
 	protected File getFolderProperty (String propName, boolean checkExists) throws AnalysisException {
 		File f = getFileProperty (propName, checkExists);
 		if (checkExists && !f.isDirectory()) {
@@ -133,6 +156,9 @@ public class BaseConfig {
 		return f;
 	}
 	
+	// *****************************************************************************
+	// String List Properties
+	// *****************************************************************************
 	protected String[] getStringListProperty (String propName) throws AnalysisException {
 		String propValueStr = getProperty(propName);
 		if (propValueStr == null) {
@@ -144,7 +170,6 @@ public class BaseConfig {
 		}
 		return propValues;
 	}
-
 	protected String[] getStringListProperty (String propName, String[] defaultValues) throws AnalysisException {
 		String[] values = getStringListProperty (propName);
 		if (values == null) {
@@ -153,6 +178,9 @@ public class BaseConfig {
 		return values;
 	}
 	
+	// *****************************************************************************
+	// Integer List Properties
+	// *****************************************************************************
 	protected int[] getIntegerListProperty (String propName) throws AnalysisException {
 		String[] propValues = getStringListProperty (propName);
 		if (propValues == null) {
@@ -161,14 +189,13 @@ public class BaseConfig {
 		int[] values = new int[propValues.length];
 		for (int i = 0; i < propValues.length; i++) {
 			try {
-				values[i] = Integer.parseInt(propValues[i]);
+				values[i] = Integer.parseInt(propValues[i].trim());
 			} catch (Exception e) {
 				throw new AnalysisException("Error parsing item #" + (i+1) + " (value='" + propValues[i] + "') in integer list for property '" + propName +"'");
 			}
 		}
 		return values;
 	}
-	
 	protected int[] getIntegerListProperty (String propName, int[] defaultValues) throws AnalysisException {
 		int[] values = getIntegerListProperty (propName);
 		if (values == null) {
@@ -177,6 +204,9 @@ public class BaseConfig {
 		return values;
 	}
 	
+	// *****************************************************************************
+	// Double List Properties
+	// *****************************************************************************
 	protected double[] getDoubleListProperty (String propName) throws AnalysisException {
 		String[] propValues = getStringListProperty (propName);
 		if (propValues == null) {
@@ -185,14 +215,13 @@ public class BaseConfig {
 		double[] values = new double[propValues.length];
 		for (int i = 0; i < propValues.length; i++) {
 			try {
-				values[i] = Double.parseDouble(propValues[i]);
+				values[i] = Double.parseDouble(propValues[i].trim());
 			} catch (Exception e) {
 				throw new AnalysisException("Error parsing item #" + (i+1) + " (value='" + propValues[i] + "') in double list for property '" + propName +"'");
 			}
 		}
 		return values;
 	}
-	
 	protected double[] getDoubleListProperty (String propName, double[] defaultValues) throws AnalysisException {
 		double[] values = getDoubleListProperty (propName);
 		if (values == null) {

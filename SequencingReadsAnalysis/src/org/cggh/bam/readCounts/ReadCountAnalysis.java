@@ -136,7 +136,7 @@ public class ReadCountAnalysis extends SampleAnalysis {
 	}
 
 	private File getSampleResultsFile (Sample sample) {
-		File sampleFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
+		File sampleFolder = getSampleSubfolder(outRootFolder, sample, true);
 		File sampleFile = new File(sampleFolder, sample.getName()+'.'+prefix+".tab");
 		return sampleFile;
 	}
@@ -301,17 +301,18 @@ public class ReadCountAnalysis extends SampleAnalysis {
 	 */
 	public static class SingleSample {
 		public static void main(String[] args) {
-			if (args.length < 5) {
+			if (args.length < 6) {
 				log.error("Usage: org.cggh.bam.readCounts.ReadCountAnalysis$SingleSample <prefix> <sampleName> <bamFile> <snpListFile> <outFolder>");
 				return;
 			}
 			String prefix = args[0].trim();		            log.info("Prefix: " + prefix);
-			String sampleId = args[1];						log.info("SampleId: " + sampleId);
-			File sampleBamFile = new File(args[2]);			log.info("SampleBamFile: " + sampleBamFile.getAbsolutePath());
-			File snpListFile = new File(args[3]);			log.info("SnpListFile: " + snpListFile.getAbsolutePath());
-			File outRootFolder = new File(args[4]);	        log.info("OutRootFolder: " + outRootFolder.getAbsolutePath());
+			String batchId = args[1];						log.info("BatchId: "+batchId);
+			String sampleId = args[2];						log.info("SampleId: " + sampleId);
+			File sampleBamFile = new File(args[3]);			log.info("SampleBamFile: " + sampleBamFile.getAbsolutePath());
+			File snpListFile = new File(args[4]);			log.info("SnpListFile: " + snpListFile.getAbsolutePath());
+			File outRootFolder = new File(args[5]);	        log.info("OutRootFolder: " + outRootFolder.getAbsolutePath());
 			try {
-				Sample sample = new Sample(sampleId, sampleBamFile);
+				Sample sample = new Sample(batchId, sampleId, sampleBamFile);
 				ReadCountAnalysis task = new ReadCountAnalysis(snpListFile, outRootFolder, prefix);
 				task.analyzeSample(sample);
 			} catch (Exception e) {

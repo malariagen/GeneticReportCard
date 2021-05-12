@@ -34,8 +34,8 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	private AlleleValidator validator = new AlleleValidator.AlleleValidatorByReadCountProportion(0.05); // 5% total reads is the min to call an allele
 	
 
-	private static final String[] CALL_FILE_HEADERS = new String[] { "Sample", "Locus", "Call", "Mutation", "MissingCodonCallsProp", "MedianReadCount", "MeanReadCount" };
-	private static final String[] MULTI_MUTANT_FILE_HEADERS = new String[] { "Sample", "Locus", "Alleles", "ReadCount" };
+	private static final String[] CALL_FILE_HEADERS = new String[] { "Batch", "Sample", "Locus", "Call", "Mutation", "MissingCodonCallsProp", "MedianReadCount", "MeanReadCount" };
+	private static final String[] MULTI_MUTANT_FILE_HEADERS = new String[] { "Batch", "Sample", "Locus", "Alleles", "ReadCount" };
 	private static final String[] MESSAGE_LOG_FILE_HEADERS = new String[] { "Message", "Allele", "ReadCount" };
 
 	public HeteroallelicAnalysis(File configFile, File refFastaFile, File outRootFolder) throws AnalysisException {
@@ -46,7 +46,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	public void analyzeSample(Sample sample) throws AnalysisException {
 		log.info("Starting " + sample.getName());
 		HeteroallelicLocus[] loci = config.getLoci();
-		File outFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
+		File outFolder = getSampleSubfolder(outRootFolder, sample, true);
 		
 		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
 			HeteroallelicLocus locus = loci[lIdx];
@@ -58,7 +58,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 				
 				// Write out the mutant codon calls to file
 				TableOutput alleleOut = new TableOutput(outFolder, sample.getName() + "." + locus.getName() + ".mutations.tab", 
-						new String[] { "Sample", "Locus", "Codon", "Call", "Mutation", "TotalReadCount", "MutantReadCount", "MutantReadProp" }, 64 * 1024);
+						new String[] { "Batch", "Sample", "Locus", "Codon", "Call", "Mutation", "TotalReadCount", "MutantReadCount", "MutantReadProp" }, 64 * 1024);
 				int sampleCall = CALL_MISSING;
 				String sampleMutation = null;
 				int[] readCounts = new int[region.codonCount];
@@ -108,6 +108,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 					}
 					if (cc.call == CALL_MUTANT || cc.call == CALL_HET) {
 						alleleOut.newRow();
+						alleleOut.appendValue(sample.getBatch());
 						alleleOut.appendValue(sample.getName());
 						alleleOut.appendValue(locus.getName());
 						alleleOut.appendValue(cIdx + locus.getStartCodon());
@@ -127,6 +128,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 				TableOutput callOut = new TableOutput(outFolder, sample.getName() + "." + locus.getName() + ".calls.tab", CALL_FILE_HEADERS, 1024);
 				callOut.setMaximumFractionDigits(2);
 				callOut.newRow();
+				callOut.appendValue(sample.getBatch());
 				callOut.appendValue(sample.getName());
 				callOut.appendValue(locus.getName());
 				callOut.appendValue(getCallString(sampleCall));
@@ -142,6 +144,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 					TableOutput mmOut = new TableOutput(outFolder, sample.getName() + "." + locus.getName() + ".multipleMutants.tab", MULTI_MUTANT_FILE_HEADERS, 4096);
 					for (MultipleMutant mm : mutants) {
 						mmOut.newRow();
+						mmOut.appendValue(sample.getBatch());
 						mmOut.appendValue(sample.getName());
 						mmOut.appendValue(locus.getName());
 						mmOut.appendValue(mm.getLabel());
@@ -560,7 +563,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 		
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			Sample sample = samples[sIdx];
-			File sampleFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
+			File sampleFolder = getSampleSubfolder(outRootFolder, sample, true);
 			File sampleFile = new File(sampleFolder, String.valueOf(sample.getName()) + "." + locus.getName() + filenameSuffix + ".tab");
 			if (!sampleFile.exists() || !sampleFile.canRead()) {
 				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
@@ -597,17 +600,18 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	 */
 	public static class SingleSample {
 		public static void main(String[] args) {
-			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.heteroallelic.HeteroallelicAnalysis$SingleSample <configFile> <sampleName> <bamFile> <refFasta> <rootFolder>");
+			if (args.length < 6) {
+				log.error("Usage: org.cggh.bam.heteroallelic.HeteroallelicAnalysis$SingleSample <configFile> <batchId> <sampleId> <bamFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);			log.info("ConfigFile: " + configFile.getAbsolutePath());
-			String sampleId = args[1];						log.info("SampleId: " + sampleId);
-			File sampleBamFile = new File(args[2]);			log.info("SampleBamFile: " + sampleBamFile.getAbsolutePath());
-			File refFastaFile = new File(args[3]);			log.info("RefFastaFile: " + refFastaFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);			log.info("RootFolder: " + rootFolder.getAbsolutePath());
+			String batchId = args[1];						log.info("BatchId: "+batchId);
+			String sampleId = args[2];						log.info("SampleId: " + sampleId);
+			File sampleBamFile = new File(args[3]);			log.info("SampleBamFile: " + sampleBamFile.getAbsolutePath());
+			File refFastaFile = new File(args[4]);			log.info("RefFastaFile: " + refFastaFile.getAbsolutePath());
+			File rootFolder = new File(args[5]);			log.info("RootFolder: " + rootFolder.getAbsolutePath());
 			try {
-				Sample sample = new Sample(sampleId, sampleBamFile);
+				Sample sample = new Sample(batchId, sampleId, sampleBamFile);
 				HeteroallelicAnalysis task = new HeteroallelicAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeSample(sample);
 			} catch (Exception e) {

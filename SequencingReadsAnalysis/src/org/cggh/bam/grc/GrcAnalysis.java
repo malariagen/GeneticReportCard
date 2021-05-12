@@ -17,6 +17,8 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
+	public final static boolean APPLY_MIN_ALT = false;
+	
 	private GrcConfig config;
 	
 	public GrcAnalysis (File configFile, File refFastaFile, File outRootFolder) throws AnalysisException  {
@@ -61,33 +63,59 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 		FileUtilities.appendFileContent("\n"+sampleName+"\t"+excMsg, errorFile);
 	}
 	
-	private static final String[] LOCUS_COUNTS_HEADERS = new String[] {"Sample","Locus","Aligned","Misaligned"};
-	private static final String[] ALLELE_COUNTS_HEADERS = new String[] {"Sample","Locus","Target","Allele","Amino","Count"};
+	private static final String[] LOCUS_COUNTS_HEADERS = new String[] {"Batch","Sample","Locus","Target","Aligned","Misaligned","Covering","Calls","LowQuality"};
+	private static final String[] CALL_HEADERS = new String[] {"Batch","Sample","Locus","Target","Call","Amino","AminoNref","Nt","NtNref","Counts"};
+	private static final String[] ALLELE_COUNTS_HEADERS = new String[] {"Batch","Sample","Locus","Target","Allele","Amino","Count"};
 	
 	public void outputSampleResults (SampleResults sr) throws AnalysisException, IOException  {
 		Sample sample = sr.getSample();
-		File outFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
-		TableOutput locusOut = new TableOutput (outFolder, sample.getName()+".locusCoverage.tab", LOCUS_COUNTS_HEADERS, 64 * 1024);		
-		TableOutput alleleOut = new TableOutput (outFolder, sample.getName()+".alleles.tab", ALLELE_COUNTS_HEADERS, 64 * 1024);		
+		File outFolder = getSampleSubfolder (outRootFolder, sample, true);
+		TableOutput locusOut = new TableOutput (outFolder, sample.getName()+".locusCoverage.tab", LOCUS_COUNTS_HEADERS, 64 * 1024);
+		TableOutput callsOut = new TableOutput (outFolder, sample.getName()+".calls.tab", CALL_HEADERS, 64 * 1024);
+		TableOutput alleleOut = new TableOutput (outFolder, sample.getName()+".alleles.tab", ALLELE_COUNTS_HEADERS, 64 * 1024);
 
 		SampleLocusResult[] locusResults = sr.getLocusResults();
 		for (int lIdx = 0; lIdx < locusResults.length; lIdx++) {
 			SampleLocusResult locusResult = locusResults[lIdx];
 			TargetLocus locus = locusResult.getLocus();
-			locusOut.newRow();
-			locusOut.appendValue(sample.getName());
-			locusOut.appendValue(locus.getName());
-			locusOut.appendValue(locusResult.getAlignedCount());
-			locusOut.appendValue(locusResult.getMisalignedCount());
-			
 			SampleTargetResult[] targetResults = locusResult.getTargetResults();
 			for (int tIdx = 0; tIdx < targetResults.length; tIdx++) {
 				SampleTargetResult targetResult = targetResults[tIdx];
 				Target target = targetResult.getTarget();
 				
+				// Output target coverage data (numbers of reads retrieves, used, discarded, etc.)
+				locusOut.newRow();
+			    locusOut.appendValue(sample.getBatch());
+			    locusOut.appendValue(sample.getName());
+			    locusOut.appendValue(locus.getName());
+			    locusOut.appendValue(target.getName());
+				locusOut.appendValue(locusResult.getAlignedCount());
+			    locusOut.appendValue(locusResult.getMisalignedCount());
+			    int hqCount = targetResult.getNtAlleleCounters().getTotal();
+			    int lqCount = targetResult.getLowQualityCount();
+			    locusOut.appendValue(hqCount+lqCount);
+			    locusOut.appendValue(hqCount);
+			    locusOut.appendValue(lqCount);
+				
+				// Output target calls (nt and amino)
+			    callsOut.newRow();
+			    callsOut.appendValue(sample.getBatch());
+			    callsOut.appendValue(sample.getName());
+			    callsOut.appendValue(locus.getName());
+			    callsOut.appendValue(target.getName());
+			    
+			    callsOut.appendValue(targetResult.getAminoCall().getCall());
+			    callsOut.appendValue(targetResult.getAminoCall().getAminoAllele());
+				callsOut.appendValue(targetResult.getAminoCall().getAminoNrefAllele());
+			    callsOut.appendValue(targetResult.getNtCall().getAllele());
+				callsOut.appendValue(targetResult.getNtCall().getNrefAllele());
+				callsOut.appendValue(targetResult.getAminoCall().getAminoAlleleSummary());
+				
+				// Output allele read count detailed data
 				LabelCounter[] alleleCounters = targetResult.getNtAlleleCounters().getSortedCounters();
 				for (int aIdx = 0; aIdx < alleleCounters.length; aIdx++) {
 					alleleOut.newRow();
+					alleleOut.appendValue(sample.getBatch());
 					alleleOut.appendValue(sample.getName());
 					alleleOut.appendValue(locus.getName());
 					alleleOut.appendValue(target.getName());
@@ -100,6 +128,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			}
 		}
 		locusOut.close();
+		callsOut.close();
 		alleleOut.close();
 	}
 	
@@ -110,15 +139,15 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	 */
 	public void analyzeAllSampleResults (Sample[] samples) throws AnalysisException, IOException  {
 		
-		// Go through all the samples, reading in all the allele counts for each target
+		// Go through all the samples, reading in all the allele counts and calls for each target
 		SampleTargetResult[][] allTargetResults = readAllSampleResults (samples);
+		AminoSampleCall[][]    allTargetCalls = readAllSampleCalls (samples);
 		
 		// Organize the coverage info by locus from sample-wise coverage data files
 		processLocusCoverageInfo (samples);
 
 		// Analyze one target at a time
-		SampleCaller caller = new SampleCaller(5, 2);
-		AminoSampleCall[][] allCalls = new AminoSampleCall[allTargets.length][samples.length];			
+		//AminoSampleCall[][] allCalls = new AminoSampleCall[allTargets.length][samples.length];			
 		for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
 			Target target = allTargets[tIdx];
 			String targetName = allTargetNames[tIdx];
@@ -134,7 +163,9 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 				if (sampleResult == null) {
 					continue;
 				}
+				// Remove sequences with undetermined nucleotide, and singleton reads			
 				sampleResult.cleanupTargetAlleles();
+				
 				LabelCounter[] ac = sampleResult.getNtAlleleCounters().getSortedCounters();
 				for (int aIdx = 0; aIdx < ac.length; aIdx++) {
 					alleleSampleCounters.increment(ac[aIdx].getLabel());						
@@ -147,64 +178,84 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			// Compute some target Allele statistics
 			AlleleStats[] alleleStats = computeTargetStats (tSampleResults, alleleSampleCounters);
 
-			// Write out pre-filtered allele read count table and allele stats summary table
-			outputAlleleReadCounts (tSampleResults, alleleStats, outRootFolder, "AlleleSampleCount.beforeMinAlt."+targetName+".tab");
-			outputAlleleStats (alleleStats, outRootFolder, "AlleleStats.beforeMinAlt."+targetName+".tab");
-
-			// Now go through and filter the alleles to reject likely artefact
-			// The test is MinAlt: homozygous or >=10 reads in at least one sample
-			ArrayList<AlleleStats> filteredAllelelStatList = new ArrayList<AlleleStats>();
-			for (int aIdx = 0; aIdx < alleleStats.length; aIdx++) {
-				if ((alleleStats[aIdx].maxReadsFraction == 1.0) || (alleleStats[aIdx].maxReads >= 10)) {
-					filteredAllelelStatList.add(alleleStats[aIdx]);
-				}
-			}
-			
-			AlleleStats[] filteredAlleleStats = filteredAllelelStatList.toArray(new AlleleStats[filteredAllelelStatList.size()]);
-			String[] filteredAlleles = new String[filteredAlleleStats.length];
-			for (int aIdx = 0; aIdx < filteredAlleleStats.length; aIdx++) {
-				filteredAlleles[aIdx] = filteredAlleleStats[aIdx].ntSequence;
-			}
-			
-			// Go through the samples, keeping only the alleles that passed the MinAlt filter.
-			LabelCounterFilter alleleListFilter = new LabelCounterFilterByLabelList (filteredAlleles);
-			for (int sIdx = 0; sIdx < tSampleResults.length; sIdx++) {
-				tSampleResults[sIdx].filterAlleleCounters(alleleListFilter);
-			}
-
 			// Write out an allele read count table and an allele stats summary table
-			outputAlleleReadCounts (tSampleResults, filteredAlleleStats, outRootFolder, "AlleleSampleCount.final."+targetName+".tab");
-			outputAlleleStats (filteredAlleleStats, outRootFolder, "AlleleStats.final."+targetName+".tab");
-			
-			// Final step: make a call 
-			for (int sIdx = 0; sIdx < tSampleResults.length; sIdx++) {
-				SampleCall ntCall = caller.callSample(tSampleResults[sIdx]);
-				allCalls[tIdx][sIdx] = new AminoSampleCall(ntCall, target);
-			}
+			outputAlleleReadCounts (tSampleResults, alleleStats, outRootFolder, "AlleleSampleCount."+targetName+".tab");
+			outputAlleleStats (alleleStats, outRootFolder, "AlleleStats."+targetName+".tab");
+		
 			// Write out the final calls
-			outputSampleCalls (allCalls[tIdx], samples, target, outRootFolder, "CallsBySample.final."+targetName+".tab");
+			outputSampleCalls (allTargetCalls[tIdx], samples, target, outRootFolder, "CallsBySample."+targetName+".tab");
 			allTargets[tIdx] = target;
 		}
 		
 		// Finally write out the overall results table
-		outputSampleCallsAllTargets (allTargets, samples, allCalls);
+		outputSampleCallsAllTargets (allTargets, samples, allTargetCalls);
 	}
 
+	
+	private AminoSampleCall[][] readAllSampleCalls (Sample[] samples) throws AnalysisException {
+		// Go through all the samples, reading in all the calls for each target, and put them in the amino call objects
+		AminoSampleCall[][] targetCalls = new AminoSampleCall[allTargets.length][samples.length];
+		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
+			Sample sample = samples[sIdx];
+			File sampleFolder = getSampleSubfolder (outRootFolder, sample, true);
+			File sampleFile = new File (sampleFolder, sample.getName()+".calls.tab");
+			if (!sampleFile.exists() || !sampleFile.canRead()) {
+				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
+				continue;
+			}
+			TableInput tif = new TableInput (sampleFile);
+		    
+			int locusFIdx    = tif.getFieldIndex("Locus");
+			int targetFIdx   = tif.getFieldIndex("Target");
+			int callFldIdx   = tif.getFieldIndex("Call");
+			int aaFldIdx     = tif.getFieldIndex("Amino");
+			int aaNrefFldIdx = tif.getFieldIndex("AminoNref");
+			int ntFldIdx     = tif.getFieldIndex("Nt");
+			int ntNrefFldIdx = tif.getFieldIndex("NtNref");
+			int countsFldIdx = tif.getFieldIndex("Counts");
 
+			try {
+				while (true) {
+					String[] inFields = tif.getNextValidLine();
+					if (inFields == null) {
+						break;
+					}
+					//String sampleName = inFields[sampleFIdx];
+					String tName = inFields[locusFIdx]+"_"+inFields[targetFIdx];
+					int tIdx = getTargetIndex (tName);
+					String ref = allTargets[tIdx].getTargetRefSeq();
+					
+					int call = Integer.parseInt(inFields[callFldIdx]);
+					String aa = inFields[aaFldIdx];
+					String aaNref = inFields[aaNrefFldIdx];
+					String nt = inFields[ntFldIdx];
+					String ntNref = inFields[ntNrefFldIdx];
+					String aaSummary = inFields[countsFldIdx];
+					
+					SampleCall ntCall = new SampleCall (call, ref, nt, ntNref, null);
+					AminoSampleCall aaCall = new AminoSampleCall (call, aa, aaNref, aaSummary, ntCall);
+					targetCalls[tIdx][sIdx] = aaCall;
+				}
+			} finally {
+				tif.close();
+			}
+		}
+		return targetCalls;
+	}
 	
 	private SampleTargetResult[][] readAllSampleResults (Sample[] samples) throws AnalysisException {
 
 		SampleTargetResult[][] targetResults = new SampleTargetResult[allTargets.length][samples.length];
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
-				targetResults[tIdx][sIdx] = new SampleTargetResult(allTargets[tIdx], samples[sIdx], new LabelCounters());
+				targetResults[tIdx][sIdx] = new SampleTargetResult(allTargets[tIdx], samples[sIdx]);
 			}
 		}
 		
 		// Go through all the samples, reading in all the allele counts for each target, and put them in the allele read count objects
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			Sample sample = samples[sIdx];
-			File sampleFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+			File sampleFolder = getSampleSubfolder (outRootFolder, sample, true);
 			File sampleFile = new File (sampleFolder, sample.getName()+".alleles.tab");
 			if (!sampleFile.exists() || !sampleFile.canRead()) {
 				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
@@ -238,13 +289,16 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	
 	public void processLocusCoverageInfo (Sample[] samples) throws AnalysisException, IOException  {
 		
-		int[][] alignedCount = new int[loci.length][samples.length];
-		int[][] misalignedCount = new int[loci.length][samples.length];
+		int[][] alignedCount    = new int[allTargets.length][samples.length];
+		int[][] misalignedCount = new int[allTargets.length][samples.length];
+		int[][] coveringCount   = new int[allTargets.length][samples.length];
+		int[][] callsCount      = new int[allTargets.length][samples.length];
+		int[][] lowQualityCount = new int[allTargets.length][samples.length];
 		
 		// Go through all the samples, reading in all the allele counts for each target, and put them in the allele read count objects
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			Sample sample = samples[sIdx];
-			File sampleFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+			File sampleFolder = getSampleSubfolder (outRootFolder, sample, true);
 			File sampleFile = new File (sampleFolder, sample.getName()+".locusCoverage.tab");
 			if (!sampleFile.exists() || !sampleFile.canRead()) {
 				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
@@ -252,8 +306,13 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			}
 			TableInput tif = new TableInput (sampleFile);
 			int locusFldIdx      = tif.getFieldIndex("Locus");
+			int targetFldIdx     = tif.getFieldIndex("Target");
 			int alignedFldIdx    = tif.getFieldIndex("Aligned");
 			int misalignedFldIdx = tif.getFieldIndex("Misaligned");
+			int coveringFldIdx   = tif.getFieldIndex("Covering");
+			int callsFldIdx      = tif.getFieldIndex("Calls");
+			int lowQualityFldIdx = tif.getFieldIndex("LowQuality");
+
 			try {
 				while (true) {
 					String[] inFields = tif.getNextValidLine();
@@ -262,9 +321,13 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 					}
 					//String sampleName = inFields[sampleFIdx];
 					String locusName = inFields[locusFldIdx];
-					int lIdx = getLocusIndex (locusName);
-					alignedCount[lIdx][sIdx] = Integer.parseInt(inFields[alignedFldIdx]);
-					misalignedCount[lIdx][sIdx] = Integer.parseInt(inFields[misalignedFldIdx]);
+					String targetName = inFields[targetFldIdx];
+					int tIdx = getTargetIndex (locusName+"_"+targetName);
+					alignedCount[tIdx][sIdx]    = Integer.parseInt(inFields[alignedFldIdx]);
+					misalignedCount[tIdx][sIdx] = Integer.parseInt(inFields[misalignedFldIdx]);
+					coveringCount[tIdx][sIdx]   = Integer.parseInt(inFields[coveringFldIdx]);
+					callsCount[tIdx][sIdx]      = Integer.parseInt(inFields[callsFldIdx]);
+					lowQualityCount[tIdx][sIdx] = Integer.parseInt(inFields[lowQualityFldIdx]);
 				}
 			} finally {
 				tif.close();
@@ -272,16 +335,24 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 		}
 		
 		// Write out the results by locus
-		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
-			Locus locus = loci[lIdx];
-			String locusName = locusNames[lIdx];
-			TableOutput locusOut = new TableOutput (outRootFolder, "LocusCoverage."+locusName+".tab", LOCUS_COUNTS_HEADERS, 64 * 1024);
-			for (int sIdx = 0; sIdx < samples.length; sIdx++) {
-				locusOut.newRow();
-				locusOut.appendValue(samples[sIdx].getName());
-				locusOut.appendValue(locus.getName());
-				locusOut.appendValue(alignedCount[lIdx][sIdx]);
-				locusOut.appendValue(misalignedCount[lIdx][sIdx]);
+		for (Locus locus : loci) {
+			TableOutput locusOut = new TableOutput (outRootFolder, "LocusCoverage."+locus.getName()+".tab", LOCUS_COUNTS_HEADERS, 64 * 1024);
+			TargetLocus tLocus = (TargetLocus)locus;
+			Target[] targets = tLocus.getTargets();
+			for (Target target : targets) {
+				int tIdx = getTargetIndex (locus.getName()+"_"+target.getName());
+				for (int sIdx = 0; sIdx < samples.length; sIdx++) {
+					locusOut.newRow();
+					locusOut.appendValue(samples[sIdx].getBatch());
+					locusOut.appendValue(samples[sIdx].getName());
+					locusOut.appendValue(locus.getName());
+					locusOut.appendValue(target.getName());
+					locusOut.appendValue(alignedCount[tIdx][sIdx]);
+					locusOut.appendValue(misalignedCount[tIdx][sIdx]);
+					locusOut.appendValue(coveringCount[tIdx][sIdx]);
+					locusOut.appendValue(callsCount[tIdx][sIdx]);
+					locusOut.appendValue(lowQualityCount[tIdx][sIdx]);
+				}
 			}
 			locusOut.close();
 		}
@@ -289,19 +360,19 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	
 	private void outputSampleCalls (AminoSampleCall[] targetCalls, Sample[] samples, Target target, File outFolder, String filename) throws AnalysisException {
 		int bufferSize = 64 * 1024;
-		String[] headers = new String[] {"Sample","Call","Alleles","AlleleReads","NtAlleles","NtAlleleReads"};
+		String[] headers = new String[] {"Batch","Sample","Call","Alleles","NtAlleles","AlleleReads"};
 		TableOutput sampleCallsOut = new TableOutput (outFolder, filename, headers, bufferSize);
 		for (int sIdx = 0; sIdx < targetCalls.length; sIdx++) {
 			AminoSampleCall call = targetCalls[sIdx];
 			boolean isLenient = call.isLenient();
 			String callString = isLenient ? "["+call.getCallString()+"]" : call.getCallString();
 			sampleCallsOut.newRow();
+			sampleCallsOut.appendValue(samples[sIdx].getBatch());
 			sampleCallsOut.appendValue(samples[sIdx].getName());
 			sampleCallsOut.appendValue(callString);
 			sampleCallsOut.appendValue(call.getAminoAllele());
-			sampleCallsOut.appendValue(call.getAminoAlleleSummary());
 			sampleCallsOut.appendValue(call.getAllele());
-			sampleCallsOut.appendValue(call.getAlleleSummary());
+			sampleCallsOut.appendValue(call.getAminoAlleleSummary());
 		}
 		sampleCallsOut.close();
 	}
@@ -312,6 +383,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
     	int bufferSize = 1024 * 1024;
     	// Get the file headers
 		ArrayList<String> headerList = new ArrayList<String>();
+		headerList.add("Batch");
 		headerList.add("Sample");
 		for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
 			Target target = allTargets[tIdx];
@@ -324,9 +396,11 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 		TableOutput sampleNrefCallsOut = new TableOutput (outRootFolder, "AllCallsNrefBySample.tab", headers, bufferSize);
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			sampleCallsOut.newRow();
+			sampleCallsOut.appendValue(samples[sIdx].getBatch());
 			sampleCallsOut.appendValue(samples[sIdx].getName());
 			
 			sampleNrefCallsOut.newRow();
+			sampleNrefCallsOut.appendValue(samples[sIdx].getBatch());
 			sampleNrefCallsOut.appendValue(samples[sIdx].getName());
 			
 			for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
@@ -393,15 +467,17 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 
 	private void outputAlleleReadCounts (SampleTargetResult[] sampleResults, AlleleStats[] aStats, File outFolder, String filename) throws AnalysisException {
 		int bufferSize = 64 * 1024;
-		String[] headers = new String[aStats.length+1];
-		headers[0] = "Sample";
+		String[] headers = new String[aStats.length+2];
+		headers[0] = "Batch";
+		headers[1] = "Sample";
 		for (int aIdx = 0; aIdx < aStats.length; aIdx++) {
-			headers[aIdx+1] = aStats[aIdx].displayLabel;
+			headers[aIdx+2] = aStats[aIdx].displayLabel;
 		}
 		TableOutput alleleReadsOut = new TableOutput (outFolder, filename, headers, bufferSize);
 		for (int sIdx = 0; sIdx < sampleResults.length; sIdx++) {
 			SampleTargetResult sampleResult = sampleResults[sIdx];
 			alleleReadsOut.newRow();
+			alleleReadsOut.appendValue(sampleResult.getSample().getBatch());
 			alleleReadsOut.appendValue(sampleResult.getSample().getName());
 			for (int aIdx = 0; aIdx < aStats.length; aIdx++) {
 				LabelCounter c = sampleResult.getNtAlleleCounters().getCounter(aStats[aIdx].ntSequence);
@@ -428,11 +504,12 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	private void outputSampleTargetSummary (SampleTargetResult[] sampleResults, File outFolder, String filename) throws AnalysisException {
 		// Write out the Sample Summary for this target
 		int bufferSize = 16 * 1024;
-		String[] headers = new String[]{"Sample","Alleles","AlleleCount"};
+		String[] headers = new String[]{"Batch","Sample","Alleles","AlleleCount"};
 		TableOutput targetSummaryOut = new TableOutput (outFolder, filename, headers, bufferSize);
 		for (int sIdx = 0; sIdx < sampleResults.length; sIdx++) {
 			SampleTargetResult sResult = sampleResults[sIdx];
 			targetSummaryOut.newRow();
+			targetSummaryOut.appendValue(sResult.getSample().getBatch());
 			targetSummaryOut.appendValue(sResult.getSample().getName());
 			targetSummaryOut.appendValue(sResult.getNtAlleleCounters().getSummary());
 			targetSummaryOut.appendValue(sResult.getNtAlleleCounters().getSize());
@@ -448,18 +525,19 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	public static class SingleSample {
 		
 		public static void main(String[] args) {
-			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$SingleSample <configFile> <sampleName> <bamFile> <chrMap> <refFasta> <chrMapFile> <rootFolder>");
+			if (args.length < 6) {
+				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$SingleSample <configFile> <batchId> <sampleId> <bamFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
-			String sampleId = args[1];					log.info("SampleId: "+sampleId);
-			File sampleBamFile = new File(args[2]);	    log.info("SampleBamFile: "+sampleBamFile.getAbsolutePath());
-			File refFastaFile = new File(args[3]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			String batchId = args[1];					log.info("BatchId: "+batchId);
+			String sampleId = args[2];					log.info("SampleId: "+sampleId);
+			File sampleBamFile = new File(args[3]);	    log.info("SampleBamFile: "+sampleBamFile.getAbsolutePath());
+			File refFastaFile = new File(args[4]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
+			File rootFolder = new File(args[5]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			
 			try {
-				Sample sample = new Sample (sampleId, sampleBamFile);
+				Sample sample = new Sample (batchId, sampleId, sampleBamFile);
 				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeSample(sample);	
 			} catch (Exception e) {

@@ -1,6 +1,7 @@
 package org.cggh.bam.target;
 
 import org.cggh.bam.*;
+import org.cggh.bam.target.TargetGenotype.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
 import java.io.*;
@@ -12,6 +13,8 @@ public class SampleAnalyzer {
 	private Sample        sample;
 	private BamConfig     config;
 	private TargetLocus[] loci;
+	private SampleCaller  caller;
+
 	
 	/* ==========================================================
 	 * Invocation: single sample
@@ -21,6 +24,8 @@ public class SampleAnalyzer {
 		this.config = config;		
 		this.loci = config.getLoci();
 		this.sample = sample;		
+		this.caller = new SampleCaller(config);
+		ReadsAlignment.configure(config);
 	}
 
 	public SampleResults analyzeSample () throws AnalysisException, IOException  {
@@ -33,31 +38,50 @@ public class SampleAnalyzer {
 		SampleLocusResult[] locusResults = new SampleLocusResult[loci.length];
 		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
 			TargetLocus locus = loci[lIdx];
+			Target[] targets = locus.getTargets();
+			SampleTargetResult[] tResults = new SampleTargetResult[targets.length];
+
+			// Handle the case where we have no mapped reads
+			ArrayList<MappedRead> mappedReadList = mappedReadLists[lIdx];
+			if (mappedReadList.isEmpty()) {
+				for (int tIdx = 0; tIdx < targets.length; tIdx++) {
+					tResults[tIdx] = new SampleTargetResult(targets[tIdx], sample);
+				}
+				locusResults[lIdx] = new SampleLocusResult(locus, tResults, 0, 0);
+				continue;
+			}
 			
 			// Make an alignment and discard those reads that have too many differences from consensus
-			ArrayList<MappedRead> mappedReadList = mappedReadLists[lIdx];
 			MappedRead[] sampleReads = mappedReadList.toArray(new MappedRead[mappedReadList.size()]);
 			ReadsAlignment ra = new ReadsAlignment(sample, locus, sampleReads);
 			sampleReads = ra.getAlignedReads();
 			
 			// Genotype the targets for each read
-			Target[] targets = locus.getTargets();
-			SampleTargetResult[] tResults = new SampleTargetResult[targets.length];
 			for (int tIdx = 0; tIdx < targets.length; tIdx++) {
 				Target target = targets[tIdx];
 				TargetGenotyper tg = new TargetGenotyper (target);
 				TargetGenotype[] targetGenos = tg.extractTargetGenotypes (sampleReads);
 				
 				LabelCounters ntAlleleCounters = new LabelCounters();
+				int lowQualityCount = 0;
 				for (int rIdx = 0; rIdx < targetGenos.length; rIdx++) {
 					TargetGenotype geno = targetGenos[rIdx];
 					if (geno.isValidGenotype()) {
 						String ntAllele = geno.getNtGenotype();
 						ntAlleleCounters.increment(ntAllele);
+					} else if (geno instanceof LowQualityTargetGenotype) {
+						lowQualityCount++;
 					}
 				}
-				tResults[tIdx] = new SampleTargetResult(target, sample, ntAlleleCounters);
+				
+				// Final step: make calls
+				SampleCall ntCall = caller.callSample(target, ntAlleleCounters);
+				AminoSampleCall aaCall = new AminoSampleCall(ntCall);
+				
+				// Store target results
+				tResults[tIdx] = new SampleTargetResult(target, sample, ntCall, aaCall, ntAlleleCounters, lowQualityCount);
 			}
+			// Store locus results
 			locusResults[lIdx] = new SampleLocusResult(locus, tResults, sampleReads.length, ra.getMisalignedReads().length);
 		}
 		return new SampleResults(sample, locusResults);

@@ -41,7 +41,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	
 	public void analyzeSample(Sample sample) throws AnalysisException {
 		String sampleName = sample.getName();
-		File sampleFolder = getSampleSubfolder(outRootFolder, sampleName, false);
+		File sampleFolder = getSampleSubfolder(outRootFolder, sample, false);
 		File vcfFile = new File (sampleFolder, sampleName+".vcf.gz");
 		if (!vcfFile.canRead()) {
 			log.warn("Error processing sample " + sampleName + " - file not found: " + vcfFile.getAbsolutePath());
@@ -101,7 +101,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 		r.close();
 		
 		// Write out the results
-		outputSampleResults (sampleName, genos);
+		outputSampleResults (sample, genos);
 	}
 		
 	private class Genotype {
@@ -189,10 +189,10 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 
 	
 	
-	private void outputSampleResults(String sampleName, Genotype[] genos) throws AnalysisException {
-		File sampleFolder = getSampleSubfolder(outRootFolder, sampleName, false);
+	private void outputSampleResults(Sample sample, Genotype[] genos) throws AnalysisException {
+		File sampleFolder = getSampleSubfolder(outRootFolder, sample, false);
 	    String[] colNames = new String[] {"Chr","Pos","Genotype","TopAllele","Call","Nraf","Ref","Nref","Counts"};
-		OutputTextStore outStore = new UncompressedOutputTextStore(sampleFolder, sampleName+".genos.tab");
+		OutputTextStore outStore = new UncompressedOutputTextStore(sampleFolder, sample.getName()+".genos.tab");
 		TableOutput out = new TableOutput (outStore, colNames, 1024 * 1024);
 		
 		for (int i = 0; i < genos.length; i++) {
@@ -231,7 +231,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 		Genotype[][] allGenos = new Genotype[samples.length][];
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			String sampleName = samples[sIdx].getName();
-			File sampleFolder = getSampleSubfolder(outRootFolder, sampleName, false);
+			File sampleFolder = getSampleSubfolder(outRootFolder, samples[sIdx], false);
 			if (sampleFolder == null) {
 				continue;
 			}
@@ -249,7 +249,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	}
 	
 	private void outputBarcodes (Sample[] samples, Genotype[][] allGenos) throws AnalysisException {
-		String[] colNames = new String[] {"Sample","MissingCount","MissingProp","HetCount","HetProp","MajorityBarcode","MajorityMeanFreq","Barcode"};
+		String[] colNames = new String[] {"Batch","Sample","MissingCount","MissingProp","HetCount","HetProp","MajorityBarcode","MajorityMeanFreq","Barcode"};
 		
 		OutputTextStore outStore = new UncompressedOutputTextStore(outRootFolder, "AllSamples.barcodes.tab");
 		TableOutput out = new TableOutput (outStore, colNames, 1024 * 1024);
@@ -258,6 +258,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 				continue;
 			}
 			out.newRow();
+			out.appendValue(samples[i].getBatch());
 			out.appendValue(samples[i].getName());
 			Genotype[] genos = allGenos[i];
 			int bcodeLen = genos.length;
@@ -298,10 +299,11 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	}
 	
 	private void outputAlleleCounts (Sample[] samples, Genotype[][] allGenos) throws AnalysisException {
-		String[] colNames = new String[snps.length + 1];
-		colNames[0] = "Sample";
+		String[] colNames = new String[snps.length + 2];
+		colNames[0] = "Batch";
+		colNames[1] = "Sample";
 		for (int sIdx = 0; sIdx < snps.length; sIdx++) {
-			colNames[sIdx+1] = snps[sIdx].getName();
+			colNames[sIdx+2] = snps[sIdx].getName();
 		}
 		OutputTextStore outStore = new UncompressedOutputTextStore(outRootFolder, "AllSamples.alleleCounts.tab");
 		TableOutput out = new TableOutput (outStore, colNames, 1024 * 1024);
@@ -310,6 +312,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 				continue;
 			}
 			out.newRow();
+			out.appendValue(samples[i].getBatch());
 			out.appendValue(samples[i].getName());
 			for (int sIdx = 0; sIdx < snps.length; sIdx++) {
 				out.appendValue(allGenos[i][sIdx].alleleCountStr);
@@ -319,10 +322,11 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	}
 
 	private void outputNrafs (Sample[] samples, Genotype[][] allGenos) throws AnalysisException {
-		String[] colNames = new String[snps.length + 1];
-		colNames[0] = "Sample";
+		String[] colNames = new String[snps.length + 2];
+		colNames[0] = "Batch";
+		colNames[1] = "Sample";
 		for (int sIdx = 0; sIdx < snps.length; sIdx++) {
-			colNames[sIdx+1] = snps[sIdx].getName();
+			colNames[sIdx+2] = snps[sIdx].getName();
 		}
 		OutputTextStore outStore = new UncompressedOutputTextStore(outRootFolder, "AllSamples.nrafs.tab");
 		TableOutput out = new TableOutput (outStore, colNames, 1024 * 1024);
@@ -331,6 +335,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 				continue;
 			}
 			out.newRow();
+			out.appendValue(samples[i].getBatch());
 			out.appendValue(samples[i].getName());
 			for (int sIdx = 0; sIdx < snps.length; sIdx++) {
 				out.appendValue(allGenos[i][sIdx].nraf);
@@ -391,16 +396,17 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	 */
 	public static class SingleSample {
 		public static void main(String[] args) {
-			if (args.length < 3) {
-				System.err.println("Usage: org.cggh.bam.barcode.BarcodeFromVcfAnalysis$SingleSample <sampleName> <outputFolder> <snpListFile>");
+			if (args.length < 4) {
+				System.err.println("Usage: org.cggh.bam.barcode.BarcodeFromVcfAnalysis$SingleSample <batchId> <sampleId> <outputFolder> <snpListFile>");
 				return;
 			}
-			String sampleName = args[0];	            log.info("Sample: "+sampleName);
-			File outRootFolder = new File(args[1]);		log.info("Output Root Folder: "+outRootFolder.getAbsolutePath());
-			File snpListFile = new File(args[2]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
+			String batchId = args[0];	            	log.info("BatchID: "+batchId);
+			String sampleId = args[1];	            	log.info("SampleID: "+sampleId);
+			File outRootFolder = new File(args[2]);		log.info("Output Root Folder: "+outRootFolder.getAbsolutePath());
+			File snpListFile = new File(args[3]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
 			try {
 				BarcodeFromVcfAnalysis task = new BarcodeFromVcfAnalysis(outRootFolder, snpListFile);
-				Sample sample = new Sample (sampleName, null);
+				Sample sample = new Sample (batchId, sampleId, null);
 				task.analyzeSample(sample);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

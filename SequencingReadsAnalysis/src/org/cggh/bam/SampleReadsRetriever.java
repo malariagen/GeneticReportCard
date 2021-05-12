@@ -11,8 +11,9 @@ import java.util.regex.*;
 public class SampleReadsRetriever {
 	
 	private Locus[]           loci;
-	private boolean           remapAllReads;
 	private boolean           skipUnmappedReadsAnalysis;
+	private int               maxIndelSize;
+
 	private SamReaderFactory  samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	
 	
@@ -23,8 +24,8 @@ public class SampleReadsRetriever {
 	public SampleReadsRetriever (BamConfig config) throws AnalysisException  {
 		// Parse configuration file
 		this.loci = config.getLoci();
-		this.remapAllReads = config.getRemapAllReads();
 		this.skipUnmappedReadsAnalysis = config.getSkipUnmappedReadsAnalysis();
+		this.maxIndelSize = config.getMaxIndelSize();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -50,13 +51,7 @@ public class SampleReadsRetriever {
 		SamReader samReader = samReaderFactory.open(sample.getBamFile());
 		GenomeRegion readSearchInterval =  locus.getReadSearchInterval();
 		String chrName = readSearchInterval.getChromosome();
-		// ==== Taking this apart ===== 
-		//String mapName = sample.getBamChromosomeMap();
-		//String transChrName = ChromosomeMap.getMappedChromosomeName(chrName, mapName);
-		//System.out.println("Locus: " + locus.name+ " - Chr: " + chrName + " - Map: "+mapName+ " - Translated: "+transChrName);
-		//System.out.println("Query: "+transChrName+":"+readSearchInterval.getStartPos()+"-"+readSearchInterval.getStopPos());
-		//SAMRecordIterator it = samReader.query(transChrName, readSearchInterval.getStartPos(), readSearchInterval.getStopPos(), true);
-		// ==== Taking this apart ===== 
+
 		SAMRecordIterator it = samReader.query(chrName, readSearchInterval.getStartPos(), readSearchInterval.getStopPos(), true);
 		while (it.hasNext()) {
 			SAMRecord record = it.next();
@@ -65,12 +60,18 @@ public class SampleReadsRetriever {
 				continue;
 			}
 			
-			// If the read is ungapped, we can use the BAM start/end coords
-			if (!remapAllReads && (record.getCigarLength() == 1) && (record.getCigarString().endsWith("M"))) {
-				//if (record.getAlignmentStart()==289468) {
-				//	remapAllReads = remapAllReads;
-				//}
-				MappedRead sr = new MappedRead(record, locus, record.getAlignmentStart(), MappedRead.MAPPED);
+			// Do an initial mapping of the read
+			MappedRead sr = new MappedRead(record, locus, record.getAlignmentStart());
+
+			// Unless the read is mapped "as is" (e.g. CIGAR string is something like "150M"), process the CIGAR to refine mapping against the reference
+			if ((record.getCigarLength() > 1) || (!record.getCigarString().endsWith("M"))) {
+				try {
+					applyCigar (sr, record.getCigar());
+				} catch (CigarException e) {
+					sr.unmap();
+				}
+			}
+			if (sr.getMappingStatus() == MappedRead.MAPPED) {
 				mappedReadsList.add(sr);
 			} else {
 				// If not, take the ungapped read, and treat it as if unmapped, try to find an anchor
@@ -81,6 +82,61 @@ public class SampleReadsRetriever {
 		it.close();
 	}
 
+	private static class CigarException extends AnalysisException {
+	    public CigarException (String msg) {
+	        super (msg);
+	    }
+	}
+	
+	private void applyCigar(MappedRead sr, Cigar cigar) throws CigarException {
+		String sequence = sr.getSequence();
+		String quality = sr.getQuality();
+		
+		StringBuffer sequenceSb = new StringBuffer(sequence.length());
+		StringBuffer qualitySb = new StringBuffer(quality.length());
+		
+		int seqPos = 0;
+		List<CigarElement> ceList = cigar.getCigarElements();
+		for (CigarElement ce : ceList) {
+			CigarOperator op = ce.getOperator();
+			int len = ce.getLength();
+			if (op.isIndel() && (len > maxIndelSize)) {
+				throw new CigarException ("Found large indel: "+len+op.name());
+			}
+			if (op.isAlignment()) {							// M, =, X
+				// Keep all matched positions
+				sequenceSb.append(sequence.substring(seqPos, seqPos+len));
+				qualitySb.append(quality.substring(seqPos, seqPos+len));
+				seqPos += len;
+			} else if (op == CigarOperator.INSERTION) {		// I
+				// Skip insertions, since they do not map against the reference
+				seqPos += len;
+			} else if (op == CigarOperator.DELETION) {		// D
+				// Insert gaps for deletions
+				for (int i = 0; i < len; i++) {
+					sequenceSb.append('-');
+					qualitySb.append('0');
+				}
+			} else if (op == CigarOperator.SOFT_CLIP) {		// S
+				// Skip soft clips, start position should not change
+				seqPos += len;
+			} else if (op == CigarOperator.HARD_CLIP) {		// H
+				// Ignore hard clips, they are not in the sequence
+			} else if (op == CigarOperator.SKIPPED_REGION) { // N
+				// This really should not happen!
+				throw new CigarException ("Found skipped region in CIGAR string- could not process");
+			} else if (op == CigarOperator.PADDING) {		// P
+				// Insert gaps for padding, though it should not happen at all
+				for (int i = 0; i < len; i++) {
+					sequenceSb.append('-');
+					qualitySb.append(' ');
+				}
+			} else {
+				throw new CigarException ("Unkonwn element in CIGAR string: "+len+op.name());
+			}
+		}
+		sr.updateSequence(sequenceSb.toString(), qualitySb.toString());
+	}
 
 	private void getUnmappedLocusReads (Sample sample, Locus[] loci, ArrayList<MappedRead>[] mappedReadLists) throws AnalysisException {
 		SamReader samReader = samReaderFactory.open(sample.getBamFile());
@@ -119,7 +175,8 @@ public class SampleReadsRetriever {
 			Matcher m = anchors[aIdx].getRegex().matcher(readSequence);
 		    if (m.find()) {
 		    	int anchorPos = m.start();
-				MappedRead sr = new MappedRead(record, locus, anchors[aIdx], anchorPos, mappingStatus);
+				MappedRead sr = new MappedRead(record, locus, anchors[aIdx], anchorPos);
+				sr.setMappingStatus (mappingStatus);
 				mappedReadList.add(sr);
 				return true;
 		    }									

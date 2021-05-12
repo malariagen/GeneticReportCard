@@ -1,7 +1,5 @@
 package org.cggh.bam.target;
 
-import org.cggh.bam.*;
-import org.cggh.common.counters.*;
 
 public class SampleCall {
 	
@@ -11,67 +9,23 @@ public class SampleCall {
 	public static final int CALL_HET      = 4;
 	
 	protected int    call;
+	protected String ref;
 	protected String allele;
 	protected String nrefAllele;
 	protected String alleleSummary;
-	protected Genotyper genotyper = new Genotyper.GenotyperReadCountProportion(0.05); // 5% total reads is the min to call an allele
-
-	public SampleCall (LabelCounters aCounters, Target t, int minCallReads) {
-		
-		alleleSummary = aCounters.getSummary();
-		LabelCounter[] counters = aCounters.getSortedCounters();
-
-		boolean missing = true;
-		int totalReads = aCounters.getTotal();
-		int alleleCount = 0;
-		if (totalReads >= minCallReads) {
-			for (int cIdx = 0; cIdx < counters.length; cIdx++) {
-				boolean valid = genotyper.isValidAllele(counters[cIdx].getCount(), totalReads);
-				if (!valid) {
-					break;
-				}
-				missing = false;
-				alleleCount++;
-			}
-		}
-		if (missing) {
-			call = CALL_MISSING;
-			return;
-		}
-		
-		if (alleleCount == 1) {
-			allele = counters[0].getLabel();
-			boolean isRef = t.getTargetRefSeq().equals(allele);
-			call = isRef ? CALL_WILDTYPE : CALL_MUTANT;
-			nrefAllele = isRef ? "." : allele;
-			return;
-		}
-		
-		call = CALL_HET;
-		StringBuffer sb = new StringBuffer();
-		StringBuffer sbNref = new StringBuffer();
-		for (int cIdx = 0; cIdx < alleleCount; cIdx++) {
-			if (cIdx > 0) {
-				sb.append(',');
-				sbNref.append('/');
-			}
-			String a = counters[cIdx].getLabel();
-			boolean isRef = t.getTargetRefSeq().equals(a);
-			sb.append(a);
-			sbNref.append(isRef ? "." : a);
-		}
-		allele = sb.toString();
-		nrefAllele = sbNref.toString();
-	}
 	
 	/*
 	 * ONLY USED BY SUPERCLASSES (AminoSampleCall)
 	 */
 	protected SampleCall (SampleCall ntCall) {
-		this.call = ntCall.call;
-		this.allele = ntCall.allele;
-		this.nrefAllele = ntCall.nrefAllele;
-		this.alleleSummary = ntCall.alleleSummary;
+		this (ntCall.call, ntCall.ref, ntCall.allele, ntCall.nrefAllele, ntCall.alleleSummary);
+	}
+	
+	public SampleCall (int call, String ref, String allele, String nrefAllele, String alleleSummary) {
+		this.call = call;
+		this.allele = allele;
+		this.nrefAllele = nrefAllele;
+		this.alleleSummary = alleleSummary;
 	}
 	
 	public boolean isMissing() {
@@ -96,6 +50,10 @@ public class SampleCall {
 		return null;
 	}
 
+	public String getRefSequence() {
+		return allele;
+	}
+
 	public String getAllele() {
 		return allele;
 	}
@@ -108,13 +66,7 @@ public class SampleCall {
 		return alleleSummary;
 	}
 	
-	
-	public static class LenientSampleCall extends SampleCall {
-		public LenientSampleCall (LabelCounters aCounters, Target t, int minCallReads) {
-			super (aCounters, t, minCallReads);
-		}
-		public boolean isLenient() {
-			return true;
-		}
+	public static SampleCall makeMissingCall () {
+		return new SampleCall (CALL_MISSING, null, null, null, null);
 	}
 }

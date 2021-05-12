@@ -40,7 +40,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	public void analyzeSample (Sample sample) throws AnalysisException  {
 		log.info("Starting " + sample.getName());
 		try {
-			File outFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+			File outFolder = getSampleSubfolder (outRootFolder, sample, true);
 			SampleAlleleClassAnalyzer analyzer = new SampleAlleleClassAnalyzer (config, sample, outFolder);
 			SampleAlleleClassResults sr = analyzer.analyzeSample();
 			
@@ -59,8 +59,8 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		log.info("Completed " + sample.getName());
 	}
 	
-	private static final String[] LISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","SampleClass"};
-	private static final String[] UNLISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","Proportion","Closest","Diff"};
+	private static final String[] LISTED_ALLELES_HEADERS = {"Batch","Sample","Locus","Target","Allele","Count","SampleClass"};
+	private static final String[] UNLISTED_ALLELES_HEADERS = {"Batch","Sample","Locus","Target","Allele","Count","Proportion","Closest","Diff"};
 	
 	private AlleleValidator validator = new AlleleValidator.AlleleValidatorByReadCountProportion(0.05); // 5% total reads is the min to call an allele
 	
@@ -70,7 +70,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	 */
 	protected void outputSampleResults (SampleAlleleClassResults sr) throws AnalysisException, IOException  {
 		Sample sample = sr.getSample();
-		File outFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+		File outFolder = getSampleSubfolder (outRootFolder, sample, true);
 
 		TableOutput alleleSetOut = new TableOutput (outFolder, sample.getName()+".classAlleles.tab", LISTED_ALLELES_HEADERS, 64 * 1024);		
 
@@ -95,6 +95,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 					String classStr = isValidAllele ? alleleCounters[aIdx].getLabel() : "-";
 					
 					alleleSetOut.newRow();
+					alleleSetOut.appendValue(sample.getBatch());
 					alleleSetOut.appendValue(sample.getName());
 					alleleSetOut.appendValue(locus.getName());
 					alleleSetOut.appendValue(target.getName());
@@ -149,12 +150,13 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	
 	private void writeAggregateResults (Sample[] samples, String[] sampleClasses, TargetCall[][] targetCalls, boolean outputCounts) throws AnalysisException {
 
-		String[] fixedHeaders = outputCounts ? new String[] {"Sample"} : new String[] {"Sample", "Class"};
+		String[] fixedHeaders = outputCounts ? new String[] {"Batch","Sample"} : new String[] {"Batch", "Sample", "Class"};
 		String[] headers = TextUtilities.mergeStringLists(fixedHeaders, allTargetNames);
 		String filename = outputCounts ? "AllSamples-AllTargets.counts.tab" : "AllSamples-AllTargets.classes.tab";
 		TableOutput out = new TableOutput (outRootFolder, filename, headers, 64 * 1024);
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			out.newRow();
+			out.appendValue(samples[sIdx].getBatch());
 			out.appendValue(samples[sIdx].getName());
 			if (!outputCounts) {
 				out.appendValue(sampleClasses[sIdx]);
@@ -181,7 +183,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		// Go through all the samples, reading in all the allele counts for each target, and put them in the allele read count objects
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			Sample sample = samples[sIdx];
-			File sampleFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+			File sampleFolder = getSampleSubfolder (outRootFolder, sample, true);
 			File sampleFile = new File (sampleFolder, sample.getName()+".classAlleles.tab");
 			if (!sampleFile.exists() || !sampleFile.canRead()) {
 				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
@@ -413,13 +415,14 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	 * and one for alleles that were not listed.
 	 */
 	protected void outputUnlistedAlleles (Sample sample, UnlistedAllele[][] allTargetUnlistedAlleles) throws AnalysisException, IOException  {
-		File outFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+		File outFolder = getSampleSubfolder (outRootFolder, sample, true);
 		TableOutput unlistedAllelesOut = new TableOutput (outFolder, sample.getName()+".unlistedAlleles.tab", UNLISTED_ALLELES_HEADERS, 64 * 1024);
 		for (int tIdx = 0; tIdx < allTargetUnlistedAlleles.length; tIdx++) {
 			UnlistedAllele[] unlistedAlleles = allTargetUnlistedAlleles[tIdx];
 			for (int uIdx = 0; uIdx < unlistedAlleles.length; uIdx++) {
 				UnlistedAllele a = unlistedAlleles[uIdx];
 				unlistedAllelesOut.newRow();
+				unlistedAllelesOut.appendValue(sample.getBatch());
 				unlistedAllelesOut.appendValue(sample.getName());
 				unlistedAllelesOut.appendValue(a.locusName);
 				unlistedAllelesOut.appendValue(a.targetName);
@@ -448,7 +451,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		HashMap<String,UnlistedAlleleStats> statsTable = new HashMap<String,UnlistedAlleleStats>();
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			Sample sample = samples[sIdx];
-			File sampleFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+			File sampleFolder = getSampleSubfolder (outRootFolder, sample, true);
 			File sampleFile = new File (sampleFolder, sample.getName()+".unlistedAlleles.tab");
 			if (!sampleFile.exists() || !sampleFile.canRead()) {
 				continue;
@@ -714,19 +717,20 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	public static class SingleSample {
 		
 		public static void main(String[] args) {
-			if (args.length < 5) {
-				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$SingleSample <configFile> <sampleName> <bamFile> <refFasta> <rootFolder>");
+			if (args.length < 6) {
+				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$SingleSample <configFile> <batchId> <sampleId> <bamFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
-			String sampleId = args[1];					log.info("SampleId: "+sampleId);
-			File sampleBamFile = new File(args[2]);	    log.info("SampleBamFile: "+sampleBamFile.getAbsolutePath());
-			File refFastaFile = new File(args[3]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
-			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			String batchId = args[1];					log.info("BatchId: "+batchId);
+			String sampleId = args[2];					log.info("SampleId: "+sampleId);
+			File sampleBamFile = new File(args[3]);	    log.info("SampleBamFile: "+sampleBamFile.getAbsolutePath());
+			File refFastaFile = new File(args[4]);		log.info("RefFastaFile: "+refFastaFile.getAbsolutePath());
+			File rootFolder = new File(args[5]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			
 			try {
 				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, rootFolder);
-				Sample sample = new Sample (sampleId, sampleBamFile);
+				Sample sample = new Sample (batchId, sampleId, sampleBamFile);
 				task.analyzeSample(sample);	
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

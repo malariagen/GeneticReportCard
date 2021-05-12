@@ -6,8 +6,12 @@ import java.util.*;
 
 public class ReadsAlignment {
 	
-	public static final int MAX_DIFFERENCES_FROM_CONSENSUS = 10;
-
+	private static int maxReadMismatches = BamConfig.DEFAULT_MAX_READ_MISMATCHES;
+	
+	public static void configure (BamConfig config) {
+		ReadsAlignment.maxReadMismatches  = config.getMaxReadMismatches();	
+	}
+	
 	private Locus        locus;
 	private Sample       sample;
 	private MappedRead[] alignedReads;
@@ -19,8 +23,7 @@ public class ReadsAlignment {
 	private char[]       consensus;
 	private int[]        differences;
 	private Sequence     referenceSequence;
-	
-	
+
 	public ReadsAlignment (Sample sample, Locus locus, MappedRead[] sampleReads) throws AnalysisException {
 		this.sample = sample;
 		this.locus = locus;
@@ -28,7 +31,10 @@ public class ReadsAlignment {
 
 		// Align all reads according to their anchor position
 		readCount = sampleReads.length;
-		alignment = makeAlignment (sampleReads);
+		if (readCount == 0) {
+			return;
+		}
+		alignment = makeAlignment (sampleReads, locus);
 		//log.info("Alignment built");
 		
         // Get a reference sequence as comparator
@@ -108,12 +114,12 @@ public class ReadsAlignment {
 	}
 	
 	public boolean hasTooManyDifferences (int rIdx) {
-		return (differences[rIdx] > MAX_DIFFERENCES_FROM_CONSENSUS);
+		return (differences[rIdx] > maxReadMismatches);
 	}
 
-	private char[][] makeAlignment (MappedRead[] sampleReads) {
+	private char[][] makeAlignment (MappedRead[] sampleReads, Locus locus) {
 		// Compute the maximum extent of the alignemnt
-		int alignEnd = alignStart = -1;
+		int alignEnd = alignStart = Integer.MIN_VALUE;
 		for (int rIdx = 0; rIdx < sampleReads.length; rIdx++) {
 			MappedRead sr = sampleReads[rIdx];
 			int rStart = sr.getStartPos();
@@ -123,22 +129,37 @@ public class ReadsAlignment {
 				alignEnd = rEnd;
 			} else {
 				alignStart = (alignStart < rStart) ? alignStart : rStart;
+				//if (rStart < 1) { System.out.println("Here"); } // This may happen sometimes in amplicons
 				alignEnd = (alignEnd > rEnd) ? alignEnd : rEnd;
 			}
 		}
+		
+		// Trim the alignment to fit in the locus region being investigated
+		int locusStart = locus.readSearchInterval.getStartPos();
+		if (alignStart < locusStart) {
+			alignStart = locusStart;
+		}
+		int locusEnd = locus.readSearchInterval.getStopPos();
+		if (alignEnd > locusEnd) {
+			alignEnd = locusEnd;
+		}
+		
+		// Create an array for storing the alignments+
 		alignLen = 1 + alignEnd - alignStart;
-
-		// Create an array for storing the alignments
 		char[][] result = new char[readCount][alignLen];
 		
 		// Write the read sequences in the right places
 		for (int rIdx = 0; rIdx < readCount; rIdx++) {
 			Arrays.fill(result[rIdx], '-');
 			MappedRead sr = sampleReads[rIdx];
-			int idx = sr.getStartPos() - alignStart;
 			String seq = sr.getSequence();
 			for (int i = 0; i < seq.length(); i++) {
-				result[rIdx][idx+i] = seq.charAt(i);
+				int pos = (sr.getStartPos() + i);
+				if ((pos < alignStart) || (pos > alignEnd)) {
+					continue;
+				}
+				int posIdx = (pos - alignStart);
+				result[rIdx][posIdx] = seq.charAt(i);
 			}
 		}
 		return result;

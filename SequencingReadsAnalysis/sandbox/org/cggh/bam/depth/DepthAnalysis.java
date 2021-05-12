@@ -195,7 +195,7 @@ public class DepthAnalysis extends BaseAnalysis {
 		double[] depth = new double[dpos.length];
 		Arrays.fill(depth, Double.NaN);
 		
-		File sampleFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
+		File sampleFolder = getSampleSubfolder(outRootFolder, sample, true);
 		InputTextStore in = null;
 		TableInput tif = null;
 		try {

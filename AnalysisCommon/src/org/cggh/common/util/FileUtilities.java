@@ -173,7 +173,7 @@ public class FileUtilities {
 				}
 			}
 		} catch (IOException e) {
-			throw new AnalysisException("Error reading SNP list file" + file.getAbsolutePath() + " at line " + lineNum + ": "+e);				
+ 			throw new AnalysisException("Error reading SNP list file" + file.getAbsolutePath() + " at line " + lineNum + ": "+e);				
 		} finally {
 			try {
 				br.close();

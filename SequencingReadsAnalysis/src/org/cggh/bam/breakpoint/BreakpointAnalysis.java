@@ -30,7 +30,7 @@ public class BreakpointAnalysis extends SampleAnalysis  {
 	public void analyzeSample (Sample sample) throws AnalysisException  {
 		log.info("Starting " + sample.getName());
 		try {
-			File outFolder = getSampleSubfolder (outRootFolder, sample.getName(), true);
+			File outFolder = getSampleSubfolder (outRootFolder, sample, true);
 			SampleBreakpointAnalyzer analyzer = new SampleBreakpointAnalyzer (config, sample, outFolder);
 			SampleResult sr = analyzer.analyzeSample();
 			
@@ -51,7 +51,7 @@ public class BreakpointAnalysis extends SampleAnalysis  {
 	
 	//private static final String[] LISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","SampleClass"};
 	//private static final String[] UNLISTED_ALLELES_HEADERS = {"Sample","Locus","Target","Allele","Count","Proportion","Closest","Diff"};
-	private static final String[] FLANK_HEADERS = {"Sample","Breakpoint","RemainderSeq","MatchSeq","FlankSeq"};
+	private static final String[] FLANK_HEADERS = {"Batch","Sample","Breakpoint","RemainderSeq","MatchSeq","FlankSeq"};
 	
 	
 	/*
@@ -66,6 +66,7 @@ public class BreakpointAnalysis extends SampleAnalysis  {
 		for (int rrIdx = 0; rrIdx < rResults.length; rrIdx++) {
 			ReadResult rr = rResults[rrIdx];
 			flankOut.newRow();
+			flankOut.appendValue(sample.getBatch());
 			flankOut.appendValue(sample.getName());
 			flankOut.appendValue(rr.breakpoint.id);
 			flankOut.appendValue(rr.remainderSeq);
@@ -90,7 +91,7 @@ public class BreakpointAnalysis extends SampleAnalysis  {
 		
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			Sample sample = samples[sIdx];
-			File sampleFolder = getSampleSubfolder(outRootFolder, sample.getName(), true);
+			File sampleFolder = getSampleSubfolder(outRootFolder, sample, true);
 			File sampleFile = new File(sampleFolder, String.valueOf(sample.getName()) + "." + filenameSuffix + ".tab");
 			if (!sampleFile.exists() || !sampleFile.canRead()) {
 				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
@@ -128,18 +129,19 @@ public class BreakpointAnalysis extends SampleAnalysis  {
 	public static class SingleSample {
 		
 		public static void main(String[] args) {
-			if (args.length < 4) {
-				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$SingleSample <configFile> <sampleName> <bamFile> <rootFolder>");
+			if (args.length < 5) {
+				log.error("Usage: org.cggh.bam.sampleClass.SampleClassAnalysis$SingleSample <configFile> <batchId> <sampleId> <bamFile> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
-			String sampleId = args[1];					log.info("SampleId: "+sampleId);
-			File sampleBamFile = new File(args[2]);	    log.info("SampleBamFile: "+sampleBamFile.getAbsolutePath());
-			File rootFolder = new File(args[3]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
+			String batchId = args[1];					log.info("BatchId: "+batchId);
+			String sampleId = args[2];					log.info("SampleId: "+sampleId);
+			File sampleBamFile = new File(args[3]);	    log.info("SampleBamFile: "+sampleBamFile.getAbsolutePath());
+			File rootFolder = new File(args[4]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			
 			try {
 				BreakpointAnalysis task = new BreakpointAnalysis(configFile, rootFolder);
-				Sample sample = new Sample (sampleId, sampleBamFile);
+				Sample sample = new Sample (batchId, sampleId, sampleBamFile);
 				task.analyzeSample(sample);	
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
