@@ -14,7 +14,6 @@ public abstract class BamConfig extends BaseConfig {
 	public static final String PROP_MIN_ALLELE_PROP     = "genotype.minAlleleReadProp";
 	public static final String PROP_MAX_INDEL_SIZE      = "alignment.maxIndelSize";
 	public static final String PROP_MAX_READ_MISMATCHES = "alignment.maxReadMismatches";
-	public static final String PROP_REMAP_ALL_READS     = "alignment.remapAllReads";
 	
 	protected String  propPrefix;
 	protected TargetLocus[] loci;

@@ -66,6 +66,19 @@ public class SampleCall {
 		return alleleSummary;
 	}
 	
+	public static int getCallFromString(String callStr) {
+		if (callStr.equals("WT")) {
+			return CALL_WILDTYPE;
+		} else if (callStr.equals("MI")) {
+			return CALL_MISSING;
+		} else if (callStr.equals("MU")) {
+			return CALL_MUTANT;
+		} else if (callStr.equals("HE")) {
+			return CALL_HET;
+		}
+		return -1;
+	}
+
 	public static SampleCall makeMissingCall () {
 		return new SampleCall (CALL_MISSING, null, null, null, null);
 	}

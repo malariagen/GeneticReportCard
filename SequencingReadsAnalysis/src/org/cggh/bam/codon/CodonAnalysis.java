@@ -1,4 +1,4 @@
-package org.cggh.bam.grc;
+package org.cggh.bam.codon;
 
 import org.cggh.bam.*;
 import org.cggh.bam.target.*;
@@ -13,19 +13,19 @@ import java.io.*;
 import java.util.*;
 
 
-public class GrcAnalysis extends SampleTargetAnalysis {
+public class CodonAnalysis extends SampleTargetAnalysis {
 	
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
 	public final static boolean APPLY_MIN_ALT = false;
 	
-	private GrcConfig config;
+	private CodonConfig config;
 	
-	public GrcAnalysis (File configFile, File refFastaFile, File outRootFolder) throws AnalysisException  {
+	public CodonAnalysis (File configFile, File refFastaFile, File outRootFolder) throws AnalysisException  {
 		super (refFastaFile, outRootFolder);
 		
 		// Parse configuration file
-		config = new GrcConfig (configFile);
+		config = new CodonConfig (configFile);
 		registerLoci(config.getLoci());
 	}
 
@@ -104,7 +104,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			    callsOut.appendValue(locus.getName());
 			    callsOut.appendValue(target.getName());
 			    
-			    callsOut.appendValue(targetResult.getAminoCall().getCall());
+			    callsOut.appendValue(targetResult.getAminoCall().getCallString());
 			    callsOut.appendValue(targetResult.getAminoCall().getAminoAllele());
 				callsOut.appendValue(targetResult.getAminoCall().getAminoNrefAllele());
 			    callsOut.appendValue(targetResult.getNtCall().getAllele());
@@ -224,8 +224,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 					String tName = inFields[locusFIdx]+"_"+inFields[targetFIdx];
 					int tIdx = getTargetIndex (tName);
 					String ref = allTargets[tIdx].getTargetRefSeq();
-					
-					int call = Integer.parseInt(inFields[callFldIdx]);
+					int call = SampleCall.getCallFromString(inFields[callFldIdx]);
 					String aa = inFields[aaFldIdx];
 					String aaNref = inFields[aaNrefFldIdx];
 					String nt = inFields[ntFldIdx];
@@ -526,7 +525,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 		
 		public static void main(String[] args) {
 			if (args.length < 6) {
-				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$SingleSample <configFile> <batchId> <sampleId> <bamFile> <refFasta> <rootFolder>");
+				log.error("Usage: org.cggh.bam.codon.CodonAnalysis$SingleSample <configFile> <batchId> <sampleId> <bamFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
@@ -538,7 +537,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			
 			try {
 				Sample sample = new Sample (batchId, sampleId, sampleBamFile);
-				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, rootFolder);
+				CodonAnalysis task = new CodonAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeSample(sample);	
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
@@ -556,7 +555,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	public static class MultiSample {
 		public static void main(String[] args) {
 			if (args.length < 4) {
-				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <rootFolder>");
+				log.error("Usage: org.cggh.bam.codon.CodonAnalysis$MultiSample <configFile> <sampleListFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
@@ -569,7 +568,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			
 			try {	
 				MultiSampleAnalysis multi = new MultiSampleAnalysis(sampleListFile, maxThreads);
-				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, rootFolder);
+				CodonAnalysis task = new CodonAnalysis(configFile, refFastaFile, rootFolder);
 				multi.execute(task);
 				task.analyzeAllSampleResults(multi.getSamples());
 			} catch (Exception e) {
@@ -587,7 +586,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 	public static class MergeResults {
 		public static void main(String[] args) {
 			if (args.length < 4) {
-				log.error("Usage: org.cggh.bam.grc.GrcAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <rootFolder>");
+				log.error("Usage: org.cggh.bam.codon.CodonAnalysis$MergeResults <configFile> <sampleListFile> <refFasta> <rootFolder>");
 				return;
 			}
 			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
@@ -596,7 +595,7 @@ public class GrcAnalysis extends SampleTargetAnalysis {
 			File rootFolder = new File(args[3]);		log.info("RootFolder: "+rootFolder.getAbsolutePath());
 			try {
 				Sample[] samples = new SampleList(sampleListFile, false).getSamples();
-				GrcAnalysis task = new GrcAnalysis(configFile, refFastaFile, rootFolder);
+				CodonAnalysis task = new CodonAnalysis(configFile, refFastaFile, rootFolder);
 				task.analyzeAllSampleResults(samples);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
