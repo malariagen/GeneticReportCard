@@ -1,7 +1,10 @@
-package org.cggh.bam.target;
+package org.cggh.bam.codon;
 
 import org.cggh.bam.*;
+import org.cggh.bam.target.Target;
 import org.cggh.common.counters.*;
+import org.cggh.common.sequence.SequenceUtilities;
+
 import java.util.*;
 
 
@@ -18,7 +21,6 @@ public class SampleCaller {
 	}
 
 	public SampleCall callSample (Target target, LabelCounters ntAlleleCounters) {
-		String alleleSummary = ntAlleleCounters.getSummary();
 		String ref = target.getTargetRefSeq();
 		
 		ArrayList<String> validAlleleList = new ArrayList<String>();
@@ -47,6 +49,7 @@ public class SampleCaller {
 			}
 		}
 		
+		String alleleSummary = getAlleleSummary (ntAlleleCounters);
 		SampleCall ntCall = new SampleCall (SampleCall.CALL_MISSING, ref, null, null, alleleSummary);
 		int alleleCount = validAlleleList.size();
 		if (alleleCount == 1) {
@@ -73,6 +76,31 @@ public class SampleCaller {
 			ntCall = new SampleCall (SampleCall.CALL_HET, ref, allele, nrefAllele, alleleSummary);
 		}
 		return ntCall;
+	}
+	
+	// Translate the nt sequences in the summary to amino sequences, and incorporate them into the summary
+	private String getAlleleSummary (LabelCounters ntAlleleCounters) {
+		LabelCounter[] counters = ntAlleleCounters.getSortedCounters();
+		if (counters.length == 0) {
+			return "-";
+		}
+		
+		StringBuffer sb = new StringBuffer();
+		for (int aIdx = 0; aIdx < counters.length; aIdx++) {
+			if (aIdx > 0) {
+				sb.append(',');
+			}
+		    String ntAllele = counters[aIdx].getLabel();
+		    int count = counters[aIdx].getCount();
+		    String aminoAllele = SequenceUtilities.translateNtSequence(ntAllele);
+		    sb.append(aminoAllele);
+		    sb.append('(');
+		    sb.append(ntAllele);
+		    sb.append(')');
+		    sb.append(':');
+		    sb.append(count);
+		}
+		return sb.toString();
 	}
 	
 	//

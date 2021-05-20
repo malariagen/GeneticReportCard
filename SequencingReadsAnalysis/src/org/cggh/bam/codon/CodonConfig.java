@@ -7,7 +7,7 @@ import java.io.*;
 
 public class CodonConfig extends BamConfig {
 	
-	public static final String PROP_PREFIX = "grc.";
+	public static final String PROP_PREFIX = "codon.";
 	
 	public CodonConfig (File configFile) throws AnalysisException  {
 		super(configFile, PROP_PREFIX);

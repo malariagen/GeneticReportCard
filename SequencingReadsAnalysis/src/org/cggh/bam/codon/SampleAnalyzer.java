@@ -1,6 +1,10 @@
-package org.cggh.bam.target;
+package org.cggh.bam.codon;
 
 import org.cggh.bam.*;
+import org.cggh.bam.target.Target;
+import org.cggh.bam.target.TargetGenotype;
+import org.cggh.bam.target.TargetGenotyper;
+import org.cggh.bam.target.TargetLocus;
 import org.cggh.bam.target.TargetGenotype.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
@@ -75,11 +79,10 @@ public class SampleAnalyzer {
 				}
 				
 				// Final step: make calls
-				SampleCall ntCall = caller.callSample(target, ntAlleleCounters);
-				AminoSampleCall aaCall = new AminoSampleCall(ntCall);
+				SampleCall sampleCall = caller.callSample(target, ntAlleleCounters);
 				
 				// Store target results
-				tResults[tIdx] = new SampleTargetResult(target, sample, ntCall, aaCall, ntAlleleCounters, lowQualityCount);
+				tResults[tIdx] = new SampleTargetResult(target, sample, sampleCall, ntAlleleCounters, lowQualityCount);
 			}
 			// Store locus results
 			locusResults[lIdx] = new SampleLocusResult(locus, tResults, sampleReads.length, ra.getMisalignedReads().length);

@@ -1,8 +1,8 @@
 package org.cggh.bam.codon;
 
 import org.cggh.bam.*;
+import org.cggh.bam.codon.SampleAnalyzer.*;
 import org.cggh.bam.target.*;
-import org.cggh.bam.target.SampleAnalyzer.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
 import org.cggh.common.fileIO.*;
@@ -104,12 +104,13 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 			    callsOut.appendValue(locus.getName());
 			    callsOut.appendValue(target.getName());
 			    
-			    callsOut.appendValue(targetResult.getAminoCall().getCallString());
-			    callsOut.appendValue(targetResult.getAminoCall().getAminoAllele());
-				callsOut.appendValue(targetResult.getAminoCall().getAminoNrefAllele());
-			    callsOut.appendValue(targetResult.getNtCall().getAllele());
-				callsOut.appendValue(targetResult.getNtCall().getNrefAllele());
-				callsOut.appendValue(targetResult.getAminoCall().getAminoAlleleSummary());
+			    SampleCall sampleCall = targetResult.getCall();
+			    callsOut.appendValue(sampleCall.getCallString());
+			    callsOut.appendValue(sampleCall.getAminoAllele());
+				callsOut.appendValue(sampleCall.getAminoNrefAllele());
+			    callsOut.appendValue(sampleCall.getNtAllele());
+				callsOut.appendValue(sampleCall.getNtNrefAllele());
+				callsOut.appendValue(sampleCall.getAlleleSummary());
 				
 				// Output allele read count detailed data
 				LabelCounter[] alleleCounters = targetResult.getNtAlleleCounters().getSortedCounters();
@@ -141,7 +142,7 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 		
 		// Go through all the samples, reading in all the allele counts and calls for each target
 		SampleTargetResult[][] allTargetResults = readAllSampleResults (samples);
-		AminoSampleCall[][]    allTargetCalls = readAllSampleCalls (samples);
+		SampleCall[][]         allTargetCalls = readAllSampleCalls (samples);
 		
 		// Organize the coverage info by locus from sample-wise coverage data files
 		processLocusCoverageInfo (samples);
@@ -192,9 +193,9 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 	}
 
 	
-	private AminoSampleCall[][] readAllSampleCalls (Sample[] samples) throws AnalysisException {
+	private SampleCall[][] readAllSampleCalls (Sample[] samples) throws AnalysisException {
 		// Go through all the samples, reading in all the calls for each target, and put them in the amino call objects
-		AminoSampleCall[][] targetCalls = new AminoSampleCall[allTargets.length][samples.length];
+		SampleCall[][] targetCalls = new SampleCall[allTargets.length][samples.length];
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
 			Sample sample = samples[sIdx];
 			File sampleFolder = getSampleSubfolder (outRootFolder, sample, true);
@@ -208,8 +209,8 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 			int locusFIdx    = tif.getFieldIndex("Locus");
 			int targetFIdx   = tif.getFieldIndex("Target");
 			int callFldIdx   = tif.getFieldIndex("Call");
-			int aaFldIdx     = tif.getFieldIndex("Amino");
-			int aaNrefFldIdx = tif.getFieldIndex("AminoNref");
+			//int aaFldIdx     = tif.getFieldIndex("Amino");
+			//int aaNrefFldIdx = tif.getFieldIndex("AminoNref");
 			int ntFldIdx     = tif.getFieldIndex("Nt");
 			int ntNrefFldIdx = tif.getFieldIndex("NtNref");
 			int countsFldIdx = tif.getFieldIndex("Counts");
@@ -225,15 +226,14 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 					int tIdx = getTargetIndex (tName);
 					String ref = allTargets[tIdx].getTargetRefSeq();
 					int call = SampleCall.getCallFromString(inFields[callFldIdx]);
-					String aa = inFields[aaFldIdx];
-					String aaNref = inFields[aaNrefFldIdx];
+					//String aa = inFields[aaFldIdx];
+					//String aaNref = inFields[aaNrefFldIdx];
 					String nt = inFields[ntFldIdx];
 					String ntNref = inFields[ntNrefFldIdx];
-					String aaSummary = inFields[countsFldIdx];
+					String alleleSummary = inFields[countsFldIdx];
 					
-					SampleCall ntCall = new SampleCall (call, ref, nt, ntNref, null);
-					AminoSampleCall aaCall = new AminoSampleCall (call, aa, aaNref, aaSummary, ntCall);
-					targetCalls[tIdx][sIdx] = aaCall;
+					SampleCall sampleCall = new SampleCall (call, ref, nt, ntNref, alleleSummary);
+					targetCalls[tIdx][sIdx] = sampleCall;
 				}
 			} finally {
 				tif.close();
@@ -357,12 +357,12 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 		}
 	}
 	
-	private void outputSampleCalls (AminoSampleCall[] targetCalls, Sample[] samples, Target target, File outFolder, String filename) throws AnalysisException {
+	private void outputSampleCalls (SampleCall[] targetCalls, Sample[] samples, Target target, File outFolder, String filename) throws AnalysisException {
 		int bufferSize = 64 * 1024;
 		String[] headers = new String[] {"Batch","Sample","Call","Alleles","NtAlleles","AlleleReads"};
 		TableOutput sampleCallsOut = new TableOutput (outFolder, filename, headers, bufferSize);
 		for (int sIdx = 0; sIdx < targetCalls.length; sIdx++) {
-			AminoSampleCall call = targetCalls[sIdx];
+			SampleCall call = targetCalls[sIdx];
 			boolean isLenient = call.isLenient();
 			String callString = isLenient ? "["+call.getCallString()+"]" : call.getCallString();
 			sampleCallsOut.newRow();
@@ -370,14 +370,14 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 			sampleCallsOut.appendValue(samples[sIdx].getName());
 			sampleCallsOut.appendValue(callString);
 			sampleCallsOut.appendValue(call.getAminoAllele());
-			sampleCallsOut.appendValue(call.getAllele());
-			sampleCallsOut.appendValue(call.getAminoAlleleSummary());
+			sampleCallsOut.appendValue(call.getNtAllele());
+			sampleCallsOut.appendValue(call.getAlleleSummary());
 		}
 		sampleCallsOut.close();
 	}
 	
 
-    private void outputSampleCallsAllTargets (Target[] allTargets, Sample[] samples, AminoSampleCall[][] allCalls) throws AnalysisException {
+    private void outputSampleCallsAllTargets (Target[] allTargets, Sample[] samples, SampleCall[][] allCalls) throws AnalysisException {
 
     	int bufferSize = 1024 * 1024;
     	// Get the file headers
@@ -403,7 +403,7 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 			sampleNrefCallsOut.appendValue(samples[sIdx].getName());
 			
 			for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
-				AminoSampleCall call = allCalls[tIdx][sIdx];
+				SampleCall call = allCalls[tIdx][sIdx];
 				String aaAllele = call.getAminoAllele();
 				String aaNrefAllele = call.getAminoNrefAllele();
 				if (!call.isMissing() && call.isLenient()) {
