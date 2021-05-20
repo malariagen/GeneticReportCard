@@ -34,32 +34,8 @@ public class AlleleClassAnalyzer {
 		this.outFolder = outFolder;
 	}
 
-	protected void outputSampleReads (ArrayList<MappedRead>[] mappedReadLists) throws AnalysisException, IOException  {
-		int idx = 0;
-		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
-			AlleleClassLocus locus = loci[lIdx];
-			AlleleClassTarget[] targets = locus.getTargets();
-			for (int tIdx = 0; tIdx < targets.length; tIdx++) {
-				AlleleClassTarget target = targets[tIdx];
-				ArrayList<MappedRead> reads = mappedReadLists[idx++];
-				String[] headers = {"Sam"};
-				TableOutput out = new TableOutput (outFolder, sample.getName()+"_"+locus.getName()+"_"+target.getName()+".reads.txt", headers, 64 * 1024);		
-				for (int aIdx = 0; aIdx < reads.size(); aIdx++) {
-					MappedRead r = reads.get(aIdx);
-					out.newRow();
-					out.appendValue(r.getSamString());
-				}
-				out.close();
-			}
-		}
-	}
-	
-
 	public SampleAlleleClassResults analyzeSample () throws AnalysisException, IOException  {
 		
-		// **************************************
-		// PART 1 - Reads analysis and Alignment
-		// **************************************
 		// Read the reads from the SAM file
 		SampleReadsRetriever srr = new SampleReadsRetriever (config);
 		ArrayList<MappedRead>[] mappedReadLists = srr.retrieveSampleReads(sample);
@@ -104,7 +80,26 @@ public class AlleleClassAnalyzer {
 		return new SampleAlleleClassResults(sample, locusResults);
 	}
 	
-
+	protected void outputSampleReads (ArrayList<MappedRead>[] mappedReadLists) throws AnalysisException, IOException  {
+		int idx = 0;
+		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
+			AlleleClassLocus locus = loci[lIdx];
+			AlleleClassTarget[] targets = locus.getTargets();
+			for (int tIdx = 0; tIdx < targets.length; tIdx++) {
+				AlleleClassTarget target = targets[tIdx];
+				ArrayList<MappedRead> reads = mappedReadLists[idx++];
+				String[] headers = {"Sam"};
+				TableOutput out = new TableOutput (outFolder, sample.getName()+"_"+locus.getName()+"_"+target.getName()+".reads.txt", headers, 64 * 1024);		
+				for (int aIdx = 0; aIdx < reads.size(); aIdx++) {
+					MappedRead r = reads.get(aIdx);
+					out.newRow();
+					out.appendValue(r.getSamString());
+				}
+				out.close();
+			}
+		}
+	}
+	
 	/* ************************************************************
 	 * Results container classes
 	 * ************************************************************

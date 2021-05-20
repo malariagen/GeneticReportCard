@@ -12,7 +12,7 @@ import java.io.*;
 import java.util.*;
 
 
-public class SampleAnalyzer {
+public class SampleCodonAnalyzer {
 	
 	private Sample        sample;
 	private BamConfig     config;
@@ -24,7 +24,7 @@ public class SampleAnalyzer {
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleAnalyzer (BamConfig config, Sample sample) throws AnalysisException  {
+	public SampleCodonAnalyzer (BamConfig config, Sample sample) throws AnalysisException  {
 		this.config = config;		
 		this.loci = config.getLoci();
 		this.sample = sample;		

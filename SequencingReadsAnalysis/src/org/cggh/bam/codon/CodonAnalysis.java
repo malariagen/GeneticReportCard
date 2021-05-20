@@ -1,7 +1,7 @@
 package org.cggh.bam.codon;
 
 import org.cggh.bam.*;
-import org.cggh.bam.codon.SampleAnalyzer.*;
+import org.cggh.bam.codon.SampleCodonAnalyzer.*;
 import org.cggh.bam.target.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
@@ -36,7 +36,7 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 	public void analyzeSample (Sample sample) throws AnalysisException  {
 		log.info("Starting " + sample.getName());
 		try {
-			SampleAnalyzer analyzer = new SampleAnalyzer (config, sample);
+			SampleCodonAnalyzer analyzer = new SampleCodonAnalyzer (config, sample);
 			SampleResults sr = analyzer.analyzeSample();
 			
 			// Write out the results
