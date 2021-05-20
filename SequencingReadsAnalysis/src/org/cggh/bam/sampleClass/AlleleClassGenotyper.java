@@ -1,9 +1,9 @@
-package org.cggh.bam.target.alleleClasses;
+package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.MappedRead;
+import org.cggh.bam.sampleClass.AlleleClassGenotype.*;
+import org.cggh.bam.sampleClass.AlleleClassTarget.*;
 import org.cggh.bam.target.*;
-import org.cggh.bam.target.alleleClasses.AlleleClassTarget.*;
-import org.cggh.bam.target.alleleClasses.AlleleClassGenotype.*;
 
 public class AlleleClassGenotyper extends TargetGenotyper {
 	

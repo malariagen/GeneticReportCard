@@ -1,15 +1,15 @@
-package org.cggh.bam.target.alleleClasses;
+package org.cggh.bam.sampleClass;
 
 import org.cggh.common.counters.*;
 
-public class SampleAlleleClassResult {
+public class AlleleClassResult {
 
 	private AlleleClassTarget target;
 	private int               totalReadCount;
 	private LabelCounter[]    alleleSetCounters;
 	private LabelCounter[]    unlistedAlleleCounters;
 
-	public SampleAlleleClassResult(AlleleClassTarget target, LabelCounter[] alleleSetCounters, LabelCounter[] unlistedAlleleCounters) {
+	public AlleleClassResult(AlleleClassTarget target, LabelCounter[] alleleSetCounters, LabelCounter[] unlistedAlleleCounters) {
 		this.target = target;
 		this.alleleSetCounters = alleleSetCounters;
 		this.unlistedAlleleCounters = unlistedAlleleCounters;

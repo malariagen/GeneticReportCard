@@ -1,10 +1,9 @@
-package org.cggh.bam.target.alleleClasses;
+package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.*;
-import org.cggh.bam.sampleClass.SampleClassConfig;
+import org.cggh.bam.sampleClass.AlleleClassGenotype.*;
+import org.cggh.bam.sampleClass.AlleleClassTarget.*;
 import org.cggh.bam.target.*;
-import org.cggh.bam.target.alleleClasses.AlleleClassTarget.*;
-import org.cggh.bam.target.alleleClasses.AlleleClassGenotype.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
 import org.cggh.common.fileIO.TableOutput;
@@ -14,7 +13,7 @@ import java.io.*;
 import java.util.*;
 
 
-public class SampleAlleleClassAnalyzer {
+public class AlleleClassAnalyzer {
 	
 	//private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
@@ -28,7 +27,7 @@ public class SampleAlleleClassAnalyzer {
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleAlleleClassAnalyzer (SampleClassConfig config, Sample sample, File outFolder) throws AnalysisException  {
+	public AlleleClassAnalyzer (SampleClassConfig config, Sample sample, File outFolder) throws AnalysisException  {
 		this.config = config;
 		this.loci = (AlleleClassLocus[])config.getLoci();
 		this.sample = sample;
@@ -74,7 +73,7 @@ public class SampleAlleleClassAnalyzer {
 			MappedRead[] sampleReads = mappedReadList.toArray(new MappedRead[mappedReadList.size()]);
 			
 			AlleleClassTarget[] targets = locus.getTargets();
-			SampleAlleleClassResult[] tResults = new SampleAlleleClassResult[targets.length];
+			AlleleClassResult[] tResults = new AlleleClassResult[targets.length];
 			
 			for (int tIdx = 0; tIdx < targets.length; tIdx++) {
 				AlleleClassTarget target = targets[tIdx];
@@ -98,7 +97,7 @@ public class SampleAlleleClassAnalyzer {
 						unlistedAlleleCounters.increment(geno.getNtGenotype());
 					}
 				}
-				tResults[tIdx] = new SampleAlleleClassResult(target, alleleSetCounters, unlistedAlleleCounters.getSortedCounters());
+				tResults[tIdx] = new AlleleClassResult(target, alleleSetCounters, unlistedAlleleCounters.getSortedCounters());
 			}
 			locusResults[lIdx] = new SampleAlleleClassLocusResult(locus, tResults);
 		}
@@ -130,9 +129,9 @@ public class SampleAlleleClassAnalyzer {
 	
 	public static class SampleAlleleClassLocusResult {
 		private AlleleClassLocus locus;
-		private SampleAlleleClassResult[]   targetResults;
+		private AlleleClassResult[]   targetResults;
 		
-		public SampleAlleleClassLocusResult(AlleleClassLocus locus, SampleAlleleClassResult[] targetResults) {
+		public SampleAlleleClassLocusResult(AlleleClassLocus locus, AlleleClassResult[] targetResults) {
 			this.locus = locus;
 			this.targetResults = targetResults;
 		}
@@ -141,7 +140,7 @@ public class SampleAlleleClassAnalyzer {
 			return locus;
 		}
 
-		public SampleAlleleClassResult[] getTargetResults() {
+		public AlleleClassResult[] getTargetResults() {
 			return targetResults;
 		}
 	}

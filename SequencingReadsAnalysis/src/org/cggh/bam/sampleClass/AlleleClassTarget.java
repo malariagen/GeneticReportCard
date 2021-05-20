@@ -1,4 +1,4 @@
-package org.cggh.bam.target.alleleClasses;
+package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.target.Target;
 import org.cggh.common.exceptions.*;

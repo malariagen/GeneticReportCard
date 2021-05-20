@@ -1,4 +1,4 @@
-package org.cggh.bam.target.alleleClasses;
+package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.Anchor;
 import org.cggh.bam.Locus;

@@ -2,10 +2,9 @@ package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.*;
 import org.cggh.bam.genotyping.AlleleValidator;
+import org.cggh.bam.sampleClass.AlleleClassTarget.*;
+import org.cggh.bam.sampleClass.AlleleClassAnalyzer.*;
 import org.cggh.bam.target.*;
-import org.cggh.bam.target.alleleClasses.*;
-import org.cggh.bam.target.alleleClasses.SampleAlleleClassAnalyzer.*;
-import org.cggh.bam.target.alleleClasses.AlleleClassTarget.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
 import org.cggh.common.fileIO.*;
@@ -41,7 +40,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		log.info("Starting " + sample.getName());
 		try {
 			File outFolder = getSampleSubfolder (outRootFolder, sample, true);
-			SampleAlleleClassAnalyzer analyzer = new SampleAlleleClassAnalyzer (config, sample, outFolder);
+			AlleleClassAnalyzer analyzer = new AlleleClassAnalyzer (config, sample, outFolder);
 			SampleAlleleClassResults sr = analyzer.analyzeSample();
 			
 			// Analyze unlisted alleles: if they are very similar to listed ones, and can be 
@@ -79,9 +78,9 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 			SampleAlleleClassLocusResult locusResult = locusResults[lIdx];
 			AlleleClassLocus locus = locusResult.getLocus();
 			
-			SampleAlleleClassResult[] targetResults = locusResult.getTargetResults();
+			AlleleClassResult[] targetResults = locusResult.getTargetResults();
 			for (int tIdx = 0; tIdx < targetResults.length; tIdx++) {
-				SampleAlleleClassResult targetResult = targetResults[tIdx];
+				AlleleClassResult targetResult = targetResults[tIdx];
 				AlleleClassTarget target = targetResult.getTarget();
 				
 				// Write out allele counts for each allele in the target allele set
@@ -381,9 +380,9 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		for (int lIdx = 0; lIdx < locusResults.length; lIdx++) {
 			SampleAlleleClassLocusResult locusResult = locusResults[lIdx];
 			AlleleClassLocus locus = locusResult.getLocus();
-			SampleAlleleClassResult[] targetResults = locusResult.getTargetResults();
+			AlleleClassResult[] targetResults = locusResult.getTargetResults();
 			for (int tIdx = 0; tIdx < targetResults.length; tIdx++) {
-				SampleAlleleClassResult targetResult = targetResults[tIdx];
+				AlleleClassResult targetResult = targetResults[tIdx];
 				AlleleClassTarget target = targetResult.getTarget();
 				LabelCounter[] alleleSetCounters = targetResult.getAlleleSetCounters();
 				double totalReads = targetResult.getTotalReadCount();

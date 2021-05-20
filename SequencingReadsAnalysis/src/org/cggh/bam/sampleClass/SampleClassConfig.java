@@ -2,7 +2,6 @@ package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.*;
 import org.cggh.bam.target.TargetLocus;
-import org.cggh.bam.target.alleleClasses.AlleleClassLocus;
 import org.cggh.common.exceptions.*;
 import java.io.*;
 

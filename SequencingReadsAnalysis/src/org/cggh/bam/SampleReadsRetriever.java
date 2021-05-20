@@ -73,7 +73,7 @@ public class SampleReadsRetriever {
 			}
 			if (sr.getMappingStatus() == MappedRead.MAPPED) {
 				mappedReadsList.add(sr);
-			} else {
+			} else if (!skipUnmappedReadsAnalysis) {
 				// If not, take the ungapped read, and treat it as if unmapped, try to find an anchor
 				@SuppressWarnings("unused")
 				boolean matched = matchUnmappedReadAtLocus (record, locus, mappedReadsList, MappedRead.REMAPPED);
