@@ -1,7 +1,7 @@
 package org.cggh.bam.codon;
 
 import org.cggh.bam.*;
-import org.cggh.bam.target.Target;
+import org.cggh.bam.target.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.sequence.SequenceUtilities;
 
@@ -20,7 +20,7 @@ public class SampleCaller {
 		this.minAlleleReadProp  = config.getMinAlleleReadProp();
 	}
 
-	public SampleCall callSample (Target target, LabelCounters ntAlleleCounters) {
+	public SampleCall callSample (AlignmentTarget target, LabelCounters ntAlleleCounters) {
 		String ref = target.getTargetRefSeq();
 		
 		ArrayList<String> validAlleleList = new ArrayList<String>();

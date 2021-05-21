@@ -224,7 +224,7 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 					//String sampleName = inFields[sampleFIdx];
 					String tName = inFields[locusFIdx]+"_"+inFields[targetFIdx];
 					int tIdx = getTargetIndex (tName);
-					String ref = allTargets[tIdx].getTargetRefSeq();
+					String ref = ((AlignmentTarget)allTargets[tIdx]).getTargetRefSeq();
 					int call = SampleCall.getCallFromString(inFields[callFldIdx]);
 					//String aa = inFields[aaFldIdx];
 					//String aaNref = inFields[aaNrefFldIdx];
@@ -385,7 +385,7 @@ public class CodonAnalysis extends SampleTargetAnalysis {
 		headerList.add("Batch");
 		headerList.add("Sample");
 		for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
-			Target target = allTargets[tIdx];
+			AlignmentTarget target = (AlignmentTarget)allTargets[tIdx];
 			String targetAminoRefSeq = SequenceUtilities.translateNtSequence(target.getTargetRefSeq());
 			headerList.add(target.getName()+"["+targetAminoRefSeq+"]");
 		}

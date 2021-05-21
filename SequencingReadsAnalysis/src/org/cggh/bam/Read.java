@@ -23,7 +23,7 @@ public class Read {
 	}
 	
 	public static Read createAnchoredRead (SAMRecord record, Locus locus, Anchor anchor, int anchorPos) {
-		return new Read (record, locus, (anchor.getPos().getPos()-anchorPos), ANCHORED);
+		return new Read (record, locus, (anchor.getPos()-anchorPos), ANCHORED);
 	}
 	
 	private Read(SAMRecord record, Locus locus, int readStartPos, int mappingStatus) {

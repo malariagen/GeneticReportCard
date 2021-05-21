@@ -1,28 +1,23 @@
 package org.cggh.bam;
 
 import org.cggh.common.exceptions.*;
-import org.cggh.common.genome.*;
 import java.util.regex.*;
 
 
 public class Anchor {
 	
-	GenomePosition pos;
-	Pattern        regex;
-	String         anchorPattern;
+	private int            pos;
+	private Pattern        regex;
+	private String         anchorPattern;
 	
-	public Anchor (String posCoords, String anchorPattern) throws AnalysisException {
-		this.pos = GenomePosition.parsePosition(posCoords);
+	public Anchor (int pos, String anchorPattern) throws AnalysisException {
+		this.pos = pos;
 		this.anchorPattern = anchorPattern;
 		this.regex = Pattern.compile(anchorPattern);
 	}
 
-	public GenomePosition getPos() {
+	public int getPos() {
 		return pos;
-	}
-
-	public void setPos(GenomePosition pos) {
-		this.pos = pos;
 	}
 
 	public Pattern getRegex() {

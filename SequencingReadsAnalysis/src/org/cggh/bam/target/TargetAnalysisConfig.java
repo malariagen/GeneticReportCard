@@ -46,8 +46,12 @@ public class TargetAnalysisConfig extends LocusAnalysisConfig {
 			for (int j = 0; j < coordStrs.length; j++) {
 				coordStrs[j] = targetChromosomeName+":"+coordStrs[j];
 			}
-			targets[idx] = new Target(parts[0], coordStrs, isReverse);
+			targets[idx] = createTarget(parts[0], coordStrs, isReverse);				
 		}
 		return targets;
+	}
+	
+	protected Target createTarget (String name, String[] targetCoords, boolean isReverse) throws AnalysisException {
+		return new Target (name, targetCoords, isReverse);
 	}
 }
