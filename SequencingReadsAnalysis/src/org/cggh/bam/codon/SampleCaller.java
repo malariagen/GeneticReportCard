@@ -14,7 +14,7 @@ public class SampleCaller {
 	private int     minAlleleReadCount;
 	private double  minAlleleReadProp;
 	
-	public SampleCaller(BamConfig config) {
+	public SampleCaller(BaseAnalysisConfig config) {
 		this.minCallReadCount   = config.getMinCallReadCount();
 		this.minAlleleReadCount = config.getMinAlleleReadCount();
 		this.minAlleleReadProp  = config.getMinAlleleReadProp();

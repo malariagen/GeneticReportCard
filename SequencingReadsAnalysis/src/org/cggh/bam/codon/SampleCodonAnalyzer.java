@@ -1,11 +1,7 @@
 package org.cggh.bam.codon;
 
 import org.cggh.bam.*;
-import org.cggh.bam.target.Target;
-import org.cggh.bam.target.TargetGenotype;
-import org.cggh.bam.target.TargetGenotyper;
-import org.cggh.bam.target.TargetLocus;
-import org.cggh.bam.target.TargetGenotype.*;
+import org.cggh.bam.target.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
 import java.io.*;
@@ -15,7 +11,7 @@ import java.util.*;
 public class SampleCodonAnalyzer {
 	
 	private Sample        sample;
-	private BamConfig     config;
+	private BaseAnalysisConfig config;
 	private TargetLocus[] loci;
 	private SampleCaller  caller;
 
@@ -24,7 +20,7 @@ public class SampleCodonAnalyzer {
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleCodonAnalyzer (BamConfig config, Sample sample) throws AnalysisException  {
+	public SampleCodonAnalyzer (TargetAnalysisConfig config, Sample sample) throws AnalysisException  {
 		this.config = config;		
 		this.loci = config.getLoci();
 		this.sample = sample;		
@@ -73,7 +69,7 @@ public class SampleCodonAnalyzer {
 					if (geno.isValidGenotype()) {
 						String ntAllele = geno.getNtGenotype();
 						ntAlleleCounters.increment(ntAllele);
-					} else if (geno instanceof LowQualityTargetGenotype) {
+					} else if (geno instanceof TargetGenotype.LowQualityTargetGenotype) {
 						lowQualityCount++;
 					}
 				}

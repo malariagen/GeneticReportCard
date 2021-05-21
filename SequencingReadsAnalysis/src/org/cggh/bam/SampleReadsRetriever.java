@@ -21,7 +21,7 @@ public class SampleReadsRetriever {
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleReadsRetriever (BamConfig config) throws AnalysisException  {
+	public SampleReadsRetriever (BaseAnalysisConfig config) throws AnalysisException  {
 		// Parse configuration file
 		this.loci = config.getLoci();
 		this.skipUnmappedReadsAnalysis = config.getSkipUnmappedReadsAnalysis();

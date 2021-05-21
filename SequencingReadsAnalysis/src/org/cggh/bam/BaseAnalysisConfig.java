@@ -1,11 +1,10 @@
 package org.cggh.bam;
 
-import org.cggh.bam.target.TargetLocus;
 import org.cggh.common.config.*;
 import org.cggh.common.exceptions.*;
 import java.io.*;
 
-public abstract class BamConfig extends BaseConfig {
+public abstract class BaseAnalysisConfig extends BaseConfig {
 	
 	public static final int DEFAULT_MAX_READ_MISMATCHES = 10;
 	
@@ -16,7 +15,7 @@ public abstract class BamConfig extends BaseConfig {
 	public static final String PROP_MAX_READ_MISMATCHES = "alignment.maxReadMismatches";
 	
 	protected String  propPrefix;
-	protected TargetLocus[] loci;
+	protected Locus[] loci;
 
 	protected int     minCallReadCount;
 	protected int     minAlleleReadCount;
@@ -26,7 +25,7 @@ public abstract class BamConfig extends BaseConfig {
 	protected int     maxReadMismatches;
 	protected boolean skipUnmappedReadsAnalysis;
 	
-	public BamConfig (File configFile, String propPrefix) throws AnalysisException  {
+	public BaseAnalysisConfig (File configFile, String propPrefix) throws AnalysisException  {
 		super(configFile);
 		this.propPrefix = propPrefix;
 		
@@ -65,7 +64,7 @@ public abstract class BamConfig extends BaseConfig {
 		return maxReadMismatches;
 	}
 	
-	public TargetLocus[] getLoci() {
+	public Locus[] getLoci() {
 		return loci;
 	}
 	
@@ -73,6 +72,6 @@ public abstract class BamConfig extends BaseConfig {
 		return skipUnmappedReadsAnalysis;
 	}
 	
-	public abstract TargetLocus[] parseLocusConfig () throws AnalysisException;
+	public abstract Locus[] parseLocusConfig () throws AnalysisException;
 	
 }

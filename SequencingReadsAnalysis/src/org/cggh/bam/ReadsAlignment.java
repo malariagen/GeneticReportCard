@@ -6,9 +6,9 @@ import java.util.*;
 
 public class ReadsAlignment {
 	
-	private static int maxReadMismatches = BamConfig.DEFAULT_MAX_READ_MISMATCHES;
+	private static int maxReadMismatches = BaseAnalysisConfig.DEFAULT_MAX_READ_MISMATCHES;
 	
-	public static void configure (BamConfig config) {
+	public static void configure (BaseAnalysisConfig config) {
 		ReadsAlignment.maxReadMismatches  = config.getMaxReadMismatches();	
 	}
 	
