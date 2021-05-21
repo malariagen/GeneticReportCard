@@ -6,8 +6,8 @@ import org.cggh.common.genome.GenomeRegion;
 
 public class LocusAnalysisConfig extends BaseAnalysisConfig {
 
-	public LocusAnalysisConfig(File configFile, String propPrefix) throws AnalysisException {
-		super(configFile, propPrefix);
+	public LocusAnalysisConfig(File configFile, String propPrefix, boolean useBamAlignment) throws AnalysisException {
+		super(configFile, propPrefix, useBamAlignment);
 	}
 	
 	@Override

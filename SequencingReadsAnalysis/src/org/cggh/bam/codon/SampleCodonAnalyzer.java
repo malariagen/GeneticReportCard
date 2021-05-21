@@ -11,7 +11,7 @@ import java.util.*;
 public class SampleCodonAnalyzer {
 	
 	private Sample        sample;
-	private BaseAnalysisConfig config;
+	private TargetAnalysisConfig config;
 	private TargetLocus[] loci;
 	private SampleCaller  caller;
 
@@ -31,8 +31,8 @@ public class SampleCodonAnalyzer {
 	public SampleResults analyzeSample () throws AnalysisException, IOException  {
 		
 		// Read the reads from the SAM file
-		SampleReadsRetriever srr = new SampleReadsRetriever (config);
-		ArrayList<MappedRead>[] mappedReadLists = srr.retrieveSampleReads(sample);
+		ReadsRetriever srr = new ReadsRetriever (config);
+		ArrayList<Read>[] mappedReadLists = srr.retrieveSampleReads(sample);
 		
 		// Analyze each locus
 		SampleLocusResult[] locusResults = new SampleLocusResult[loci.length];
@@ -42,7 +42,7 @@ public class SampleCodonAnalyzer {
 			SampleTargetResult[] tResults = new SampleTargetResult[targets.length];
 
 			// Handle the case where we have no mapped reads
-			ArrayList<MappedRead> mappedReadList = mappedReadLists[lIdx];
+			ArrayList<Read> mappedReadList = mappedReadLists[lIdx];
 			if (mappedReadList.isEmpty()) {
 				for (int tIdx = 0; tIdx < targets.length; tIdx++) {
 					tResults[tIdx] = new SampleTargetResult(targets[tIdx], sample);
@@ -52,7 +52,7 @@ public class SampleCodonAnalyzer {
 			}
 			
 			// Make an alignment and discard those reads that have too many differences from consensus
-			MappedRead[] sampleReads = mappedReadList.toArray(new MappedRead[mappedReadList.size()]);
+			Read[] sampleReads = mappedReadList.toArray(new Read[mappedReadList.size()]);
 			ReadsAlignment ra = new ReadsAlignment(sample, locus, sampleReads);
 			sampleReads = ra.getAlignedReads();
 			

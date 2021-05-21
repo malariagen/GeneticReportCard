@@ -8,11 +8,12 @@ import java.util.*;
 import java.util.regex.*;
 
 
-public class SampleReadsRetriever {
+public class ReadsRetriever {
 	
 	private Locus[]           loci;
-	private boolean           skipUnmappedReadsAnalysis;
+	private boolean           analyzeUnmappedReads;
 	private int               maxIndelSize;
+	private boolean           useAlignment;
 
 	private SamReaderFactory  samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	
@@ -21,35 +22,50 @@ public class SampleReadsRetriever {
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public SampleReadsRetriever (BaseAnalysisConfig config) throws AnalysisException  {
+	public ReadsRetriever (BaseAnalysisConfig config) throws AnalysisException  {
 		// Parse configuration file
 		this.loci = config.getLoci();
-		this.skipUnmappedReadsAnalysis = config.getSkipUnmappedReadsAnalysis();
+		this.useAlignment = config.getUseBamAlignment();
+		this.analyzeUnmappedReads = config.getAnalyzeUnmappedReads();
 		this.maxIndelSize = config.getMaxIndelSize();
+		
+		// Verify we only have single search intervals for alignmet-based tasks
+		if (useAlignment) {
+			for (int lIdx = 0; lIdx < loci.length; lIdx++) {
+				Locus locus = loci[lIdx];
+				GenomeRegion[] searchIntervals = locus.getReadSearchIntervals();
+				if (searchIntervals.length > 1) {
+					throw new AnalysisException ("Error at locus "+locus.getName()+": an alignment-base task cannot use more than one search interval per locus.");
+				}
+			}
+		}
 	}
 
 	@SuppressWarnings("unchecked")
-	public ArrayList<MappedRead>[] retrieveSampleReads (Sample sample) throws AnalysisException, IOException  {
+	public ArrayList<Read>[] retrieveSampleReads (Sample sample) throws AnalysisException, IOException  {
 		// Read the reads from the SAM file
-		ArrayList<MappedRead>[] mappedReadLists = new ArrayList[loci.length];
+		ArrayList<Read>[] readLists = new ArrayList[loci.length];
 		
 		for (int i = 0; i < loci.length; i++) {
 			Locus locus = loci[i];
-			mappedReadLists[i] = new ArrayList<MappedRead>();
-			getMappedLocusReads (sample, locus, mappedReadLists[i]);
+			readLists[i] = new ArrayList<Read>();
+			GenomeRegion[] searchIntervals = locus.getReadSearchIntervals();
+			for (int j = 0; j < searchIntervals.length; j++) {
+				GenomeRegion interval = searchIntervals[j];
+				getMappedLocusReads (sample, locus, interval, readLists[i], useAlignment);
+			}
 		}
 		
 		// Then search unmapped reads (this does not necessarily find them all, but will do)
-		if (!skipUnmappedReadsAnalysis) {
-			getUnmappedLocusReads (sample, loci, mappedReadLists);
+		if (analyzeUnmappedReads) {
+			getUnmappedLocusReads (sample, loci, readLists);
 		}
 		
-		return mappedReadLists;
+		return readLists;
 	}
 	
-	private void getMappedLocusReads (Sample sample, Locus locus, ArrayList<MappedRead> mappedReadsList) throws AnalysisException {
+	private void getMappedLocusReads (Sample sample, Locus locus, GenomeRegion readSearchInterval, ArrayList<Read> readsList, boolean useAlignment) throws AnalysisException {
 		SamReader samReader = samReaderFactory.open(sample.getBamFile());
-		GenomeRegion readSearchInterval =  locus.getReadSearchInterval();
 		String chrName = readSearchInterval.getChromosome();
 
 		SAMRecordIterator it = samReader.query(chrName, readSearchInterval.getStartPos(), readSearchInterval.getStopPos(), true);
@@ -60,23 +76,32 @@ public class SampleReadsRetriever {
 				continue;
 			}
 			
-			// Do an initial mapping of the read
-			MappedRead sr = new MappedRead(record, locus, record.getAlignmentStart());
-
-			// Unless the read is mapped "as is" (e.g. CIGAR string is something like "150M"), process the CIGAR to refine mapping against the reference
-			if ((record.getCigarLength() > 1) || (!record.getCigarString().endsWith("M"))) {
-				try {
-					applyCigar (sr, record.getCigar());
-				} catch (CigarException e) {
-					sr.unmap();
+			if (useAlignment) { 
+				// Use the BAM alignment to do an initial mapping of the read
+				Read sr = Read.createMappedRead(record, locus, record.getAlignmentStart());
+				
+				// Unless the read is mapped "as is" (e.g. CIGAR string is something like "150M"), 
+				// process the CIGAR to refine mapping against the reference
+				if ((record.getCigarLength() > 1) || (!record.getCigarString().endsWith("M"))) {
+					try {
+						applyCigar (sr, record.getCigar());
+					} catch (CigarException e) {
+						sr.unmap();
+					}
 				}
-			}
-			if (sr.getMappingStatus() == MappedRead.MAPPED) {
-				mappedReadsList.add(sr);
-			} else if (!skipUnmappedReadsAnalysis) {
+				
+				// If the mapping is still valid after applying CIGAR, use the alignment.
 				// If not, take the ungapped read, and treat it as if unmapped, try to find an anchor
+				if (sr.getMappingStatus() == Read.MAPPED) {
+					readsList.add(sr);
+				} else if (analyzeUnmappedReads) {
+					@SuppressWarnings("unused")
+					boolean matched = matchReadAtLocus (record, locus, readsList);
+				}
+			} else {
+				// Do not use the BAM alignment, just find an anchor.
 				@SuppressWarnings("unused")
-				boolean matched = matchUnmappedReadAtLocus (record, locus, mappedReadsList, MappedRead.REMAPPED);
+				boolean matched = matchReadAtLocus (record, locus, readsList);
 			}
 		}
 		it.close();
@@ -88,7 +113,7 @@ public class SampleReadsRetriever {
 	    }
 	}
 	
-	private void applyCigar(MappedRead sr, Cigar cigar) throws CigarException {
+	private void applyCigar(Read sr, Cigar cigar) throws CigarException {
 		String sequence = sr.getSequence();
 		String quality = sr.getQuality();
 		
@@ -138,7 +163,7 @@ public class SampleReadsRetriever {
 		sr.updateSequence(sequenceSb.toString(), qualitySb.toString());
 	}
 
-	private void getUnmappedLocusReads (Sample sample, Locus[] loci, ArrayList<MappedRead>[] mappedReadLists) throws AnalysisException {
+	private void getUnmappedLocusReads (Sample sample, Locus[] loci, ArrayList<Read>[] mappedReadLists) throws AnalysisException {
 		SamReader samReader = samReaderFactory.open(sample.getBamFile());
 		SAMRecordIterator it = samReader.queryUnmapped();
 		while (it.hasNext()) {
@@ -152,22 +177,22 @@ public class SampleReadsRetriever {
 		it.close();
 	}
 
-	private boolean matchUnmappedRead (SAMRecord record, Locus[] loci, ArrayList<MappedRead>[] mappedReadLists) throws AnalysisException {
+	private boolean matchUnmappedRead (SAMRecord record, Locus[] loci, ArrayList<Read>[] mappedReadLists) throws AnalysisException {
 		boolean matched = false;
 		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
 			Locus locus = loci[lIdx];
 			if (!locus.getAnalyzeUnmappedReads()) {
 				continue;
 			}
-			ArrayList<MappedRead> mappedReadList = mappedReadLists[lIdx];
-			if (matchUnmappedReadAtLocus (record, locus, mappedReadList, MappedRead.UNMAPPED)) {
+			ArrayList<Read> mappedReadList = mappedReadLists[lIdx];
+			if (matchReadAtLocus (record, locus, mappedReadList)) {
 				matched = true;  // The same unmapped read may have anchors that match multiple loci, so do not give up after finding a match
 			}
 		}
 		return matched;
 	}
 
-	private boolean matchUnmappedReadAtLocus (SAMRecord record, Locus locus, ArrayList<MappedRead> mappedReadList, int mappingStatus) throws AnalysisException {
+	private boolean matchReadAtLocus (SAMRecord record, Locus locus, ArrayList<Read> mappedReadList) throws AnalysisException {
 		// Does the read contain an anchor?
 		String readSequence = record.getReadString();
 		Anchor[] anchors = locus.getAnchors();
@@ -175,8 +200,7 @@ public class SampleReadsRetriever {
 			Matcher m = anchors[aIdx].getRegex().matcher(readSequence);
 		    if (m.find()) {
 		    	int anchorPos = m.start();
-				MappedRead sr = new MappedRead(record, locus, anchors[aIdx], anchorPos);
-				sr.setMappingStatus (mappingStatus);
+				Read sr = Read.createAnchoredRead (record, locus, anchors[aIdx], anchorPos);
 				mappedReadList.add(sr);
 				return true;
 		    }									

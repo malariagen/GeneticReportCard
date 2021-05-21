@@ -5,16 +5,22 @@ import org.cggh.common.genome.GenomeRegion;
 
 public class Locus {
 
-	String       name;	
-	String       readSearchIntervalCoords;
-	GenomeRegion readSearchInterval;
-	Anchor[]     anchors;
-	boolean      analyzeUnmappedReads;
+	String         name;	
+	String         readSearchIntervalCoords;
+	GenomeRegion[] readSearchIntervals;
+	Anchor[]       anchors;
+	boolean        analyzeUnmappedReads;
 
 	public Locus(String name, String readSearchIntervalCoords, Anchor[] anchors, boolean analyzeUnmappedReads) throws AnalysisException {
 		this.name = name;
+		
 		this.readSearchIntervalCoords = readSearchIntervalCoords;
-		this.readSearchInterval = GenomeRegion.parseRegion(readSearchIntervalCoords);
+		String[] intervalStrs = readSearchIntervalCoords.split(",");
+		this.readSearchIntervals = new GenomeRegion[intervalStrs.length];
+		for (int idx = 0; idx < intervalStrs.length; idx++) {
+			this.readSearchIntervals[idx] = GenomeRegion.parseRegion(intervalStrs[idx]);
+		}
+		
 		this.anchors = anchors;
 		this.analyzeUnmappedReads = analyzeUnmappedReads;
 	}
@@ -23,16 +29,17 @@ public class Locus {
 		return name;
 	}
 
-	public String getChromosome() {
-		return readSearchInterval.getChromosome();
-	}
-
 	public String getReadSearchIntervalCoords() {
 		return readSearchIntervalCoords;
 	}
 
+	public GenomeRegion[] getReadSearchIntervals() {
+		return readSearchIntervals;
+	}
+
+	// Convenience function for alignment-based tasks
 	public GenomeRegion getReadSearchInterval() {
-		return readSearchInterval;
+		return readSearchIntervals[0];
 	}
 
 	public Anchor[] getAnchors() {

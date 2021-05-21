@@ -9,6 +9,6 @@ public class CodonConfig extends TargetAnalysisConfig {
 	public static final String PROP_PREFIX = "codon.";
 	
 	public CodonConfig (File configFile) throws AnalysisException  {
-		super(configFile, PROP_PREFIX);
+		super(configFile, PROP_PREFIX, true);
 	}
 }

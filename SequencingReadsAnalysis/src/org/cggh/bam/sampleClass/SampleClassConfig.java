@@ -10,7 +10,7 @@ public class SampleClassConfig extends AlleleClassAnalysisConfig {
 	protected String[]           classes;
 	
 	public SampleClassConfig (File configFile) throws AnalysisException  {
-		super(configFile, PROP_PREFIX);
+		super(configFile, PROP_PREFIX, false);
 		classes = getStringListProperty(propPrefix+"classes");
 	}
 	

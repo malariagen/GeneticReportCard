@@ -1,6 +1,6 @@
 package org.cggh.bam.sampleClass;
 
-import org.cggh.bam.MappedRead;
+import org.cggh.bam.Read;
 import org.cggh.bam.sampleClass.AlleleClassGenotype.*;
 import org.cggh.bam.sampleClass.AlleleClassTarget.*;
 import org.cggh.bam.target.*;
@@ -21,7 +21,7 @@ public class AlleleClassGenotyper extends TargetGenotyper {
 		}
 	}
 	
-	public TargetGenotype[] extractTargetNtGenotypes (MappedRead[] reads) {
+	public TargetGenotype[] extractTargetNtGenotypes (Read[] reads) {
 		TargetGenotype[] baseGenos = super.extractTargetGenotypes(reads);
 		TargetGenotype[] targetGenos = new TargetGenotype[reads.length];
 		for (int rIdx = 0; rIdx < reads.length; rIdx++) {

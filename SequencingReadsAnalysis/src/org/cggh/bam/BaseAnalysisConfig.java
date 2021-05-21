@@ -23,9 +23,10 @@ public abstract class BaseAnalysisConfig extends BaseConfig {
 	
 	protected int     maxIndelSize;
 	protected int     maxReadMismatches;
-	protected boolean skipUnmappedReadsAnalysis;
+	protected boolean useBamAlignment;
+	protected boolean analyzeUnmappedReads;
 	
-	public BaseAnalysisConfig (File configFile, String propPrefix) throws AnalysisException  {
+	public BaseAnalysisConfig (File configFile, String propPrefix, boolean useBamAlignment) throws AnalysisException  {
 		super(configFile);
 		this.propPrefix = propPrefix;
 		
@@ -35,11 +36,13 @@ public abstract class BaseAnalysisConfig extends BaseConfig {
 		maxIndelSize       = this.getIntProperty(propPrefix+PROP_MAX_INDEL_SIZE,      0);	
 		maxReadMismatches  = this.getIntProperty(propPrefix+PROP_MAX_READ_MISMATCHES, DEFAULT_MAX_READ_MISMATCHES);	
 		
+		this.useBamAlignment = useBamAlignment;
 		loci = parseLocusConfig ();
-		skipUnmappedReadsAnalysis = true;
+		analyzeUnmappedReads = false;
 		for (int i = 0; i < loci.length; i++) {
 			if (loci[i].getAnalyzeUnmappedReads()) {
-				skipUnmappedReadsAnalysis = false;
+				analyzeUnmappedReads = true;
+				break;
 			}
 		}
 	}
@@ -64,12 +67,16 @@ public abstract class BaseAnalysisConfig extends BaseConfig {
 		return maxReadMismatches;
 	}
 	
+	public boolean getUseBamAlignment () {
+		return useBamAlignment;
+	}
+	
 	public Locus[] getLoci() {
 		return loci;
 	}
 	
-	public boolean getSkipUnmappedReadsAnalysis() {
-		return skipUnmappedReadsAnalysis;
+	public boolean getAnalyzeUnmappedReads() {
+		return analyzeUnmappedReads;
 	}
 	
 	public abstract Locus[] parseLocusConfig () throws AnalysisException;

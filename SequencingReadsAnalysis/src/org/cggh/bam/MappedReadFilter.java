@@ -4,13 +4,13 @@ import java.util.*;
 
 public abstract class MappedReadFilter {
 	
-	public abstract boolean isReadValid(MappedRead read);
+	public abstract boolean isReadValid(Read read);
 	
-	public ArrayList<MappedRead> filterReads(ArrayList<MappedRead> mappedReadList) {
-		Iterator<MappedRead> it = mappedReadList.iterator();
-		ArrayList<MappedRead> discardedReadsList = new ArrayList<MappedRead>();
+	public ArrayList<Read> filterReads(ArrayList<Read> mappedReadList) {
+		Iterator<Read> it = mappedReadList.iterator();
+		ArrayList<Read> discardedReadsList = new ArrayList<Read>();
 		while(it.hasNext()) {
-			MappedRead read = it.next();
+			Read read = it.next();
 			if (!isReadValid(read)) {
 				it.remove();
 				discardedReadsList.add(read);

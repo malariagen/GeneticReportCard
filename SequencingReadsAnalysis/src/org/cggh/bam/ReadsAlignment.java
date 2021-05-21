@@ -12,19 +12,19 @@ public class ReadsAlignment {
 		ReadsAlignment.maxReadMismatches  = config.getMaxReadMismatches();	
 	}
 	
-	private Locus        locus;
-	private Sample       sample;
-	private MappedRead[] alignedReads;
-	private MappedRead[] misalignedReads;
-	private int          alignStart;
-	private int          readCount;
-	private int          alignLen;
-	private char[][]     alignment;
-	private char[]       consensus;
-	private int[]        differences;
-	private Sequence     referenceSequence;
+	private Locus    locus;
+	private Sample   sample;
+	private Read[]   alignedReads;
+	private Read[]   misalignedReads;
+	private int      alignStart;
+	private int      readCount;
+	private int      alignLen;
+	private char[][] alignment;
+	private char[]   consensus;
+	private int[]    differences;
+	private Sequence referenceSequence;
 
-	public ReadsAlignment (Sample sample, Locus locus, MappedRead[] sampleReads) throws AnalysisException {
+	public ReadsAlignment (Sample sample, Locus locus, Read[] sampleReads) throws AnalysisException {
 		this.sample = sample;
 		this.locus = locus;
 		//log.info("Start alignment building");
@@ -47,8 +47,8 @@ public class ReadsAlignment {
 		// Determine how good is the alignment of each read
 		differences = countDifferencesFromConsensus ();
 		
-		ArrayList<MappedRead> alignedReadList = new ArrayList<MappedRead>(sampleReads.length);
-		ArrayList<MappedRead> misalignedReadList = new ArrayList<MappedRead>();
+		ArrayList<Read> alignedReadList = new ArrayList<Read>(sampleReads.length);
+		ArrayList<Read> misalignedReadList = new ArrayList<Read>();
 		for (int rIdx = 0; rIdx < readCount; rIdx++) {
 			if (hasTooManyDifferences (rIdx)) {
 				misalignedReadList.add(sampleReads[rIdx]);
@@ -56,26 +56,26 @@ public class ReadsAlignment {
 				alignedReadList.add(sampleReads[rIdx]);
 			}
 		}
-		alignedReads = alignedReadList.toArray(new MappedRead[alignedReadList.size()]);
-		misalignedReads = misalignedReadList.toArray(new MappedRead[misalignedReadList.size()]);
+		alignedReads = alignedReadList.toArray(new Read[alignedReadList.size()]);
+		misalignedReads = misalignedReadList.toArray(new Read[misalignedReadList.size()]);
 	}
 	
 	public Sample getSample() {
 		return sample;
 	}
 
-	public MappedRead[] getAllMappedReads() {
-		MappedRead[] sampleReads = new MappedRead[alignedReads.length+misalignedReads.length];
+	public Read[] getAllMappedReads() {
+		Read[] sampleReads = new Read[alignedReads.length+misalignedReads.length];
 		System.arraycopy(alignedReads, 0, sampleReads, 0, alignedReads.length);
 		System.arraycopy(misalignedReads, 0, sampleReads, alignedReads.length, misalignedReads.length);
 		return sampleReads;
 	}
 
-	public MappedRead[] getAlignedReads() {
+	public Read[] getAlignedReads() {
 		return alignedReads;
 	}
 
-	public MappedRead[] getMisalignedReads() {
+	public Read[] getMisalignedReads() {
 		return misalignedReads;
 	}
 
@@ -117,11 +117,11 @@ public class ReadsAlignment {
 		return (differences[rIdx] > maxReadMismatches);
 	}
 
-	private char[][] makeAlignment (MappedRead[] sampleReads, Locus locus) {
+	private char[][] makeAlignment (Read[] sampleReads, Locus locus) {
 		// Compute the maximum extent of the alignemnt
 		int alignEnd = alignStart = Integer.MIN_VALUE;
 		for (int rIdx = 0; rIdx < sampleReads.length; rIdx++) {
-			MappedRead sr = sampleReads[rIdx];
+			Read sr = sampleReads[rIdx];
 			int rStart = sr.getStartPos();
 			int rEnd = rStart + sr.getSequence().length() - 1;
 			if (rIdx == 0) {
@@ -135,11 +135,11 @@ public class ReadsAlignment {
 		}
 		
 		// Trim the alignment to fit in the locus region being investigated
-		int locusStart = locus.readSearchInterval.getStartPos();
+		int locusStart = locus.getReadSearchInterval().getStartPos();
 		if (alignStart < locusStart) {
 			alignStart = locusStart;
 		}
-		int locusEnd = locus.readSearchInterval.getStopPos();
+		int locusEnd = locus.getReadSearchInterval().getStopPos();
 		if (alignEnd > locusEnd) {
 			alignEnd = locusEnd;
 		}
@@ -151,7 +151,7 @@ public class ReadsAlignment {
 		// Write the read sequences in the right places
 		for (int rIdx = 0; rIdx < readCount; rIdx++) {
 			Arrays.fill(result[rIdx], '-');
-			MappedRead sr = sampleReads[rIdx];
+			Read sr = sampleReads[rIdx];
 			String seq = sr.getSequence();
 			for (int i = 0; i < seq.length(); i++) {
 				int pos = (sr.getStartPos() + i);

@@ -21,12 +21,12 @@ public class ReadsAlignmentWriter {
 
 	public void outputAlignment (ReadsAlignment ra, Locus locus, File outFolder) throws AnalysisException {
 		Sequence[] alignSeq;
-		MappedRead[] mappedReads = ra.getAllMappedReads();
+		Read[] mappedReads = ra.getAllMappedReads();
 		if (mappedReads.length > 0) {
 			alignSeq = new Sequence[mappedReads.length+1];
 			alignSeq[0] = ra.getReferenceSequence();
 			for (int rIdx = 0; rIdx < mappedReads.length; rIdx++) {
-				MappedRead r = mappedReads[rIdx];
+				Read r = mappedReads[rIdx];
 				String flags = "";
 				if (ra.hasTooManyDifferences(rIdx)) {
 					flags += "[MISALIGNED]";
@@ -35,10 +35,10 @@ public class ReadsAlignmentWriter {
 					flags += "[-]";
 				}
 				switch(r.getMappingStatus()) {
-				case MappedRead.REMAPPED:
-					flags += "[R]";
+				case Read.ANCHORED:
+					flags += "[A]";
 					break;
-				case MappedRead.UNMAPPED:
+				case Read.UNMAPPED:
 					flags += "[U]";
 					break;
 				}
@@ -70,7 +70,7 @@ public class ReadsAlignmentWriter {
 		sb.append('\n');
 		sb.append(BAM_COMMENT_PREFIX+"Flag\tRefName\tPos\tMapQ\tCigar\tRefNext\tPosNext\tTmplLen\tSeq\tQual");
 		for (int rIdx = 0; rIdx < mappedReads.length; rIdx++) {
-			MappedRead sr = mappedReads[rIdx];
+			Read sr = mappedReads[rIdx];
 			sb.append('\n');
 			sb.append(sr.getSamString());
 			samOut.commitIfBufferFull();

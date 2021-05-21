@@ -1,11 +1,9 @@
 package org.cggh.bam.target;
 
 import org.cggh.bam.*;
-import org.cggh.common.config.*;
 import org.cggh.common.exceptions.*;
 import org.cggh.common.genome.*;
 import org.cggh.common.sequence.*;
-import java.util.*;
 
 public class Target {
 
@@ -59,37 +57,6 @@ public class Target {
 		return targetRefSeq;
 	}
 	
-	public static Target[] parseTargetConfig(Properties configProperties, String propLocusPrefix, String locusChromosome) throws AnalysisException {
-		return new TargetConfig(configProperties).parseTargets(propLocusPrefix, locusChromosome);
-	}
-	
-	public static class TargetConfig extends BaseConfig {
-
-		public TargetConfig(Properties configProperties) {
-			super(configProperties);
-		}
-		
-		public Target[] parseTargets (String propLocusPrefix, String locusChromosome) throws AnalysisException {
-
-			String[] targetsStr = getStringListProperty(propLocusPrefix+".targets");
-			Target[] targets = new Target[targetsStr.length];
-			for (int idx = 0; idx < targets.length; idx++) {
-				String[] parts = targetsStr[idx].split("@");
-				String coordStr = parts[1].trim();
-				boolean isReverse = false;
-				if (coordStr.startsWith("-")) {
-					isReverse = true;
-					coordStr = coordStr.substring(1);  // Remove -
-				}
-				String[] coordStrs = coordStr.split("&");
-				for (int j = 0; j < coordStrs.length; j++) {
-					coordStrs[j] = locusChromosome+":"+coordStrs[j];
-				}
-				targets[idx] = new Target(parts[0], coordStrs, isReverse);
-			}
-			return targets;
-		}
-	}
 }
 
 

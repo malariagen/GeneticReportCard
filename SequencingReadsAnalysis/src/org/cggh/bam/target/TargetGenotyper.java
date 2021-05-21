@@ -14,7 +14,7 @@ public class TargetGenotyper {
 		this.target = target;
 	}
 	
-	public TargetGenotype[] extractTargetGenotypes (MappedRead[] reads) {
+	public TargetGenotype[] extractTargetGenotypes (Read[] reads) {
 		GenomeRegion[] tRegions = target.getTargetRegions();
 		HashMap<String,TargetGenotype> genoTable = new HashMap<String,TargetGenotype>(reads.length);
 		TargetGenotype[] targetGenos = new TargetGenotype[reads.length];
@@ -22,7 +22,7 @@ public class TargetGenotyper {
 		
 		nextRead:
 		for (int rIdx = 0; rIdx < reads.length; rIdx++) {
-			MappedRead r = reads[rIdx];
+			Read r = reads[rIdx];
 			int rStartPos = r.getStartPos();
 			int rEndPos = rStartPos + r.getSequence().length() - 1;
 			
@@ -52,7 +52,7 @@ public class TargetGenotyper {
 						minQ = q;
 					}
 				}
-				if (minQ < MappedRead.MIN_PHRED_SCORE) {
+				if (minQ < Read.MIN_PHRED_SCORE) {
 					targetGenos[rIdx] = new TargetGenotype.LowQualityTargetGenotype();
 					continue nextRead;
 				}
