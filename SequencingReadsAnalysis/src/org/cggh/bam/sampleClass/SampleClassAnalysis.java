@@ -658,8 +658,9 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		// Process one class at a time to get the overall call for the sample
 		String[] sampleClasses = new String[samples.length];
 		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
-			int[] specificAlleleCounts = new int[classes.length];
+			int[] specificAlleleCounts     = new int[classes.length];
 			int[] promiscuousAllelesCounts = new int[classes.length];
+			@SuppressWarnings("unused")
 			int validCount = 0;
 			for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
 				TargetCall tCall = targetCalls[sIdx][tIdx];
@@ -690,13 +691,14 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 			}
 			
 			// Do the calling.
-			// If a class is called at more than one locus, call it even if there is no consensus.
+			// There must be at least one target where the class is called specifically (i.e. not a promiscuous target allele)
 			String call = null;
 			for (int cIdx = 0; cIdx < classes.length; cIdx++) {
 				boolean callClass = specificAlleleCounts[cIdx] > 0;
 				if (callClass) {
+					// If a class is called at more than one locus, call it even if there is no consensus.
 					int targetCallCount = specificAlleleCounts[cIdx] + promiscuousAllelesCounts[cIdx];
-					boolean consensus = ((targetCallCount == validCount) | (targetCallCount>= 2));
+					boolean consensus = (targetCallCount>= 2);
 					if (consensus) {
 						call = (call == null) ? classes[cIdx] : call+","+classes[cIdx];
 					}
@@ -706,6 +708,8 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		}
 		return sampleClasses;
 	}
+	
+	
 	
 	
 
