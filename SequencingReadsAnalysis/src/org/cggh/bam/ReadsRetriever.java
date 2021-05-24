@@ -22,7 +22,7 @@ public class ReadsRetriever {
 	 * Invocation: single sample
 	 * ==========================================================
 	 */
-	public ReadsRetriever (BaseAnalysisConfig config) throws AnalysisException  {
+	public ReadsRetriever (LocusAnalysisConfig config) throws AnalysisException  {
 		// Parse configuration file
 		this.loci = config.getLoci();
 		this.useAlignment = config.getUseBamAlignment();

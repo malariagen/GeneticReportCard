@@ -1,31 +1,27 @@
 package org.cggh.bam.codon;
 
 import org.cggh.bam.*;
+import org.cggh.bam.genotyping.*;
 import org.cggh.bam.target.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.sequence.SequenceUtilities;
 
 import java.util.*;
 
-
 public class SampleCaller {
 	
-	private int     minCallReadCount;
-	private int     minAlleleReadCount;
-	private double  minAlleleReadProp;
+	private LabelCounterGenotyper genotyper;
 	
 	public SampleCaller(BaseAnalysisConfig config) {
-		this.minCallReadCount   = config.getMinCallReadCount();
-		this.minAlleleReadCount = config.getMinAlleleReadCount();
-		this.minAlleleReadProp  = config.getMinAlleleReadProp();
+		genotyper = new LabelCounterGenotyper(config.getMinCallReadCount(), config.getMinAlleleReadCount(), config.getMinAlleleReadProp());
 	}
 
 	public SampleCall callSample (AlignmentTarget target, LabelCounters ntAlleleCounters) {
 		String ref = target.getTargetRefSeq();
 		
-		ArrayList<String> validAlleleList = new ArrayList<String>();
 		int totalReads = ntAlleleCounters.getTotal();
-		if (totalReads >= minCallReadCount) {
+		ArrayList<String> validAlleleList = new ArrayList<String>();
+		if (genotyper.hasSufficientReads(totalReads)) {		
 			// We have enough reads to make a call (potentially).
 			// However, we need to discard alleles that do not have enough coverage and therefore we suspect could be noise.
 			// Start with the allele read counts, ordered by read count (descending)
@@ -33,7 +29,7 @@ public class SampleCaller {
 		    LabelCounter[] counters = ntAlleleCounters.getSortedCounters();
 			for (int cIdx = 0; cIdx < counters.length; cIdx++) {
 				// In order for an allele to be accepted, we need a minimum of reads, and these must make up at least a minimum proportion of the total reads.
-				boolean validAllele = isValidAllele (counters[cIdx], totalReads);
+				boolean validAllele = genotyper.isValidAllele (counters[cIdx].getCount(), totalReads);
 				if (validAllele) {
 					validAlleleList.add(counters[cIdx].getLabel());
 					totalValidReads += counters[cIdx].getCount();
@@ -41,7 +37,7 @@ public class SampleCaller {
 					// We've found an allele that does not meet criteria; since the array is sorted by read counts, any subsequent allele will also not be valid.
 					// So we terminate allele checking. Before we exit, we need to reassess whether we have enough good reads to make a call, after eliminating
 					// all the counters that we think might have been noise. If we do not have enough, reset the called alleles before exiting.
-					if (totalValidReads < minCallReadCount) {
+					if (!genotyper.hasSufficientReads(totalValidReads)) {
 						validAlleleList.clear();
 					}
 					break;
@@ -101,17 +97,5 @@ public class SampleCaller {
 		    sb.append(count);
 		}
 		return sb.toString();
-	}
-	
-	//
-	// In order for an allele to be accepted, we need a minimum of reads, and these must make up at least a minimum proportion of the total reads.
-    //
-	private boolean isValidAllele (LabelCounter counter, int totalReads) {
-		int alleleReads = counter.getCount();
-		if (alleleReads < minAlleleReadCount) {
-			return false;
-		}
-		double alleleProp = ((double) alleleReads) / ((double) totalReads);
-		return (alleleProp >= minAlleleReadProp);
 	}
 }

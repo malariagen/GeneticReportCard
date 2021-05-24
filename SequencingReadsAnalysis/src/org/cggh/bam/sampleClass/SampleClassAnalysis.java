@@ -61,7 +61,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	private static final String[] LISTED_ALLELES_HEADERS = {"Batch","Sample","Locus","Target","Allele","Count","SampleClass"};
 	private static final String[] UNLISTED_ALLELES_HEADERS = {"Batch","Sample","Locus","Target","Allele","Count","Proportion","Closest","Diff"};
 	
-	private AlleleValidator validator = new AlleleValidator.AlleleValidatorByReadCountProportion(0.05); // 5% total reads is the min to call an allele
+	private AlleleValidator validator = new AlleleValidator(0.05); // 5% total reads is the min to call an allele
 	
 	/*
 	 * Write out the results for this sample into two files: one of counts of listed sample class-specific alleles,

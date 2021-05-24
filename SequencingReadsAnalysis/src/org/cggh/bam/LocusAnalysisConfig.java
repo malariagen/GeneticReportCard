@@ -5,11 +5,24 @@ import org.cggh.common.exceptions.AnalysisException;
 
 public class LocusAnalysisConfig extends BaseAnalysisConfig {
 
+	protected Locus[] loci;
+	
 	public LocusAnalysisConfig(File configFile, String propPrefix, boolean useBamAlignment) throws AnalysisException {
 		super(configFile, propPrefix, useBamAlignment);
+		loci = parseLocusConfig ();
+		analyzeUnmappedReads = false;
+		for (int i = 0; i < loci.length; i++) {
+			if (loci[i].getAnalyzeUnmappedReads()) {
+				analyzeUnmappedReads = true;
+				break;
+			}
+		}
 	}
 	
-	@Override
+	public Locus[] getLoci() {
+		return loci;
+	}
+	
 	public Locus[] parseLocusConfig () throws AnalysisException {
 		String[] locusNames = getStringListProperty(propPrefix+"loci");
 		Locus[] loci = new Locus[locusNames.length];

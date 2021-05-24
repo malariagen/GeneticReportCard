@@ -24,13 +24,15 @@ public class ReadCountAnalysis extends SampleAnalysis {
 
 	private SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	private GenotypableSnp[] genoPositions;
+	private ReadCountConfig config;
 	private String prefix = null;
 	private File warningFile = null;
 	
-	public ReadCountAnalysis(File snpListFile, File outRootFolder, String prefix) throws AnalysisException {
-		super(null, outRootFolder);
-		genoPositions = readGenotypableSnp(snpListFile);
+	public ReadCountAnalysis(File configFile, File snpListFile, File outRootFolder, String prefix) throws AnalysisException {
+		super(configFile, outRootFolder);
+		this.config = new ReadCountConfig (configFile);
 		this.prefix = prefix;
+		genoPositions = readGenotypableSnp(snpListFile);
 	}
 
 	public void analyzeSample(Sample sample) throws AnalysisException {
@@ -45,7 +47,7 @@ public class ReadCountAnalysis extends SampleAnalysis {
 	public void analyzeSampleReads(Sample sample) throws AnalysisException {
 			
 	    // See GentypingConfig for parameters. Right now, it's min 5 reads for a call, min 5% total reads to call an allele
-	    BiallelicNtGenotyper bg = new BiallelicNtGenotyper();
+	    NucleotideGenotyper bg = new NucleotideGenotyper(config.getMinCallReadCount(), config.getMinAlleleReadCount(), config.getMinAlleleReadProp());
 
 	    log.info("Starting " + sample.getName());  
 		int[] refCounts = new int[genoPositions.length];
@@ -301,19 +303,20 @@ public class ReadCountAnalysis extends SampleAnalysis {
 	 */
 	public static class SingleSample {
 		public static void main(String[] args) {
-			if (args.length < 6) {
-				log.error("Usage: org.cggh.bam.readCounts.ReadCountAnalysis$SingleSample <prefix> <sampleName> <bamFile> <snpListFile> <outFolder>");
+			if (args.length < 7) {
+				log.error("Usage: org.cggh.bam.readCounts.ReadCountAnalysis$SingleSample <configFile> <prefix> <batchId> <sampleName> <bamFile> <snpListFile> <outFolder>");
 				return;
 			}
-			String prefix = args[0].trim();		            log.info("Prefix: " + prefix);
-			String batchId = args[1];						log.info("BatchId: "+batchId);
-			String sampleId = args[2];						log.info("SampleId: " + sampleId);
-			File sampleBamFile = new File(args[3]);			log.info("SampleBamFile: " + sampleBamFile.getAbsolutePath());
-			File snpListFile = new File(args[4]);			log.info("SnpListFile: " + snpListFile.getAbsolutePath());
-			File outRootFolder = new File(args[5]);	        log.info("OutRootFolder: " + outRootFolder.getAbsolutePath());
+			File configFile = new File(args[0]);		    log.info("ConfigFile: "+configFile.getAbsolutePath());
+			String prefix = args[1].trim();		            log.info("Prefix: " + prefix);
+			String batchId = args[2];						log.info("BatchId: "+batchId);
+			String sampleId = args[3];						log.info("SampleId: " + sampleId);
+			File sampleBamFile = new File(args[4]);			log.info("SampleBamFile: " + sampleBamFile.getAbsolutePath());
+			File snpListFile = new File(args[5]);			log.info("SnpListFile: " + snpListFile.getAbsolutePath());
+			File outRootFolder = new File(args[6]);	        log.info("OutRootFolder: " + outRootFolder.getAbsolutePath());
 			try {
 				Sample sample = new Sample(batchId, sampleId, sampleBamFile);
-				ReadCountAnalysis task = new ReadCountAnalysis(snpListFile, outRootFolder, prefix);
+				ReadCountAnalysis task = new ReadCountAnalysis(configFile, snpListFile, outRootFolder, prefix);
 				task.analyzeSample(sample);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);
@@ -330,19 +333,20 @@ public class ReadCountAnalysis extends SampleAnalysis {
 	 */
 	public static class MultiSample {
 		public static void main(String[] args) {
-			if (args.length < 4) {
-				log.error("Usage: org.cggh.bam.readCounts.ReadCountAnalysis$MultiSample <prefix> <sampleListFile> <snpListFile> <rootFolder>");
+			if (args.length < 5) {
+				log.error("Usage: org.cggh.bam.readCounts.ReadCountAnalysis$MultiSample <configFile> <prefix> <batchId> <sampleListFile> <snpListFile> <rootFolder>");
 				return;
 			}
-			String prefix = args[0].trim();		            log.info("Prefix: " + prefix);
-			File sampleListFile = new File(args[1]);		log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
-			File snpListFile = new File(args[2]);			log.info("SnpListFile: " + snpListFile.getAbsolutePath());
-			File outRootFolder = new File(args[3]);			log.info("OutRootFolder: " + outRootFolder.getAbsolutePath());
+			File configFile = new File(args[0]);		    log.info("ConfigFile: "+configFile.getAbsolutePath());
+			String prefix = args[1].trim();		            log.info("Prefix: " + prefix);
+			File sampleListFile = new File(args[2]);		log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
+			File snpListFile = new File(args[3]);			log.info("SnpListFile: " + snpListFile.getAbsolutePath());
+			File outRootFolder = new File(args[4]);			log.info("OutRootFolder: " + outRootFolder.getAbsolutePath());
 			int maxThreads = Integer.parseInt(System.getProperty("maxThreads", "0"));
 
 			try {
 				MultiSampleAnalysis multi = new MultiSampleAnalysis(sampleListFile, maxThreads);
-				ReadCountAnalysis task = new ReadCountAnalysis(snpListFile, outRootFolder, prefix);
+				ReadCountAnalysis task = new ReadCountAnalysis(configFile, snpListFile, outRootFolder, prefix);
 				multi.execute((SampleAnalysis) task);
 				task.mergeAllSampleResults(multi.getSamples());
 			} catch (Exception e) {
@@ -360,18 +364,19 @@ public class ReadCountAnalysis extends SampleAnalysis {
 	 */
 	public static class MergeResults {
 		public static void main(String[] args) {
-			if (args.length < 4) {
-				log.error("Usage: org.cggh.bam.readCounts.ReadCountAnalysis$MergeResults <prefix> <sampleListFile> <snpListFile> <outRootFolder>");
+			if (args.length < 5) {
+				log.error("Usage: org.cggh.bam.readCounts.ReadCountAnalysis$MergeResults <configFile> <prefix> <sampleListFile> <snpListFile> <outRootFolder>");
 				return;
 			}
-			String prefix = args[0].trim();		            log.info("Prefix: " + prefix);
-			File sampleListFile = new File(args[1]);		log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
-			File snpListFile = new File(args[2]);			log.info("SnpListFile: " + snpListFile.getAbsolutePath());
-			File outRootFolder = new File(args[3]);			log.info("OutRootFolder: " + outRootFolder.getAbsolutePath());
+			File configFile = new File(args[0]);		    log.info("ConfigFile: "+configFile.getAbsolutePath());
+			String prefix = args[1].trim();		            log.info("Prefix: " + prefix);
+			File sampleListFile = new File(args[2]);		log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
+			File snpListFile = new File(args[3]);			log.info("SnpListFile: " + snpListFile.getAbsolutePath());
+			File outRootFolder = new File(args[4]);			log.info("OutRootFolder: " + outRootFolder.getAbsolutePath());
 			
 			try {
 				Sample[] samples = new SampleList(sampleListFile, false).getSamples();
-				ReadCountAnalysis task = new ReadCountAnalysis(snpListFile, outRootFolder, prefix);
+				ReadCountAnalysis task = new ReadCountAnalysis(configFile, snpListFile, outRootFolder, prefix);
 				task.mergeAllSampleResults(samples);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

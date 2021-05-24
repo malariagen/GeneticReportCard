@@ -37,7 +37,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	}
 	
 	
-	private AlleleValidator gt = new AlleleValidator.AlleleValidatorByReadCountProportion(0.05);
+	private AlleleValidator gt = new AlleleValidator(0.05);
 	
 	public void analyzeSample(Sample sample) throws AnalysisException {
 		String sampleName = sample.getName();

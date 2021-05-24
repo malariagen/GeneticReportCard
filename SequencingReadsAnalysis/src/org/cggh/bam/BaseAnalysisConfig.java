@@ -15,7 +15,6 @@ public abstract class BaseAnalysisConfig extends BaseConfig {
 	public static final String PROP_MAX_READ_MISMATCHES = "alignment.maxReadMismatches";
 	
 	protected String  propPrefix;
-	protected Locus[] loci;
 
 	protected int     minCallReadCount;
 	protected int     minAlleleReadCount;
@@ -37,14 +36,6 @@ public abstract class BaseAnalysisConfig extends BaseConfig {
 		maxReadMismatches  = this.getIntProperty(propPrefix+PROP_MAX_READ_MISMATCHES, DEFAULT_MAX_READ_MISMATCHES);	
 		
 		this.useBamAlignment = useBamAlignment;
-		loci = parseLocusConfig ();
-		analyzeUnmappedReads = false;
-		for (int i = 0; i < loci.length; i++) {
-			if (loci[i].getAnalyzeUnmappedReads()) {
-				analyzeUnmappedReads = true;
-				break;
-			}
-		}
 	}
 	
 	public int getMinCallReadCount() {
@@ -71,14 +62,10 @@ public abstract class BaseAnalysisConfig extends BaseConfig {
 		return useBamAlignment;
 	}
 	
-	public Locus[] getLoci() {
-		return loci;
-	}
-	
 	public boolean getAnalyzeUnmappedReads() {
 		return analyzeUnmappedReads;
 	}
 	
-	public abstract Locus[] parseLocusConfig () throws AnalysisException;
+	//public abstract Locus[] parseLocusConfig () throws AnalysisException;
 	
 }
