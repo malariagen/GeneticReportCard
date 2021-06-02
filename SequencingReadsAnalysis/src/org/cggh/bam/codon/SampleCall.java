@@ -12,7 +12,8 @@ public class SampleCall {
 	public static final int CALL_HET      = 4;
 	
 	private int    call;
-	private String ref;
+	private String ntRef;
+	private String aaRef;
 	
 	private String ntAllele;
 	private String ntNrefAllele;
@@ -22,7 +23,8 @@ public class SampleCall {
 	
 	public SampleCall (int call, String ref, String ntAllele, String ntNrefAllele, String alleleSummary) {
 		this.call = call;
-		this.ref = ref;
+		this.ntRef = ref;
+		this.aaRef = SequenceUtilities.translateNtSequence(ref);
 		
 		this.ntAllele = ntAllele;
 		this.ntNrefAllele = ntNrefAllele;
@@ -37,8 +39,8 @@ public class SampleCall {
 	
 	protected SampleCall (SampleCall srcCall) {
 		this.call = srcCall.call;
-		this.ref = srcCall.ref;
-		
+		this.ntRef = srcCall.ntRef;
+		this.aaRef = srcCall.aaRef;
 		this.ntAllele = srcCall.ntAllele;
 		this.ntNrefAllele = srcCall.ntNrefAllele;
 		
@@ -50,8 +52,6 @@ public class SampleCall {
 	
 	private void callAminoAcid () {
 	    // Get the amino acids corresponding to the called codons, collapsing codons that generate the same amino
-		String ntRef = getRefSequence();
-		String aaRef = SequenceUtilities.translateNtSequence(ntRef);
 	    ArrayList<String> aaList = new ArrayList<String>();
 	    String[] ntAlleles = ntAllele.split(",");
 		for (int idx = 0; idx < ntAlleles.length; idx++) {
@@ -104,8 +104,12 @@ public class SampleCall {
 		return null;
 	}
 
-	public String getRefSequence() {
-		return ntAllele;
+	public String getNtRefSequence() {
+		return ntRef;
+	}
+
+	public String getAminoRefSequence() {
+		return ntRef;
 	}
 
 	public String getNtAllele() {

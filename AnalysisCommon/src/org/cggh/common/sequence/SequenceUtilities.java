@@ -166,6 +166,9 @@ public class SequenceUtilities {
 	
 
 	public static String  translateNtSequence(String sequence) {
+		if (sequence == null) {
+			return null;
+		}
 		StringBuffer sb = new StringBuffer(sequence.length() / 3);
 		for (int idx = 0; idx < sequence.length(); idx += 3) {
 			char aa = Translation.getCodon(sequence, idx+1, false).getAmino();
