@@ -2,6 +2,7 @@ package org.cggh.common.sequence;
 
 import org.cggh.common.util.TextUtilities;
 
+
 public class SequenceUtilities {
 	
 	

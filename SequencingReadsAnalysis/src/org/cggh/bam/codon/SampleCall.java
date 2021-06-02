@@ -15,6 +15,7 @@ public class SampleCall {
 	private String ntRef;
 	private String aaRef;
 	
+	
 	private String ntAllele;
 	private String ntNrefAllele;
 	private String aaAllele;
