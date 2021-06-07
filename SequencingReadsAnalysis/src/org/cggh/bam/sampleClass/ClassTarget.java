@@ -1,14 +1,14 @@
 package org.cggh.bam.sampleClass;
 
-import org.cggh.bam.target.Target;
+import org.cggh.bam.target.*;
 import org.cggh.common.exceptions.*;
 
 
-public class AlleleClassTarget extends Target {
+public class ClassTarget extends Target {
 	
 	private ClassAllele[] alleles;
 	
-	public AlleleClassTarget (String name, String[] targetCoords, boolean isReverse, ClassAllele[] alleles) throws AnalysisException {
+	public ClassTarget (String name, String[] targetCoords, boolean isReverse, ClassAllele[] alleles) throws AnalysisException {
 		super (name, targetCoords, isReverse);
 		this.alleles = alleles;
 	}

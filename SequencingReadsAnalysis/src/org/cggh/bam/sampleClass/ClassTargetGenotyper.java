@@ -1,23 +1,23 @@
 package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.Read;
-import org.cggh.bam.sampleClass.AlleleClassGenotype.*;
-import org.cggh.bam.sampleClass.AlleleClassTarget.*;
+import org.cggh.bam.sampleClass.ClassTarget.*;
 import org.cggh.bam.target.*;
+import org.cggh.common.util.TextUtilities;
 
-public class AlleleClassGenotyper extends TargetGenotyper {
+public class ClassTargetGenotyper extends TargetGenotyper {
 	
-	protected AlleleClassTarget           target;
-	protected ClassAllele[]               alleles;
-	protected AlleleClassGenotype[] definedGenos;
+	protected ClassTarget     target;
+	protected ClassAllele[]         alleles;
+	protected ClassTargetGenotype[] definedGenos;
 	
-	public AlleleClassGenotyper (AlleleClassTarget target) {
+	public ClassTargetGenotyper (ClassTarget target) {
 		super(target);
 		this.target = target;
 		alleles = target.getAlleles();
-		definedGenos = new AlleleClassGenotype[alleles.length];
+		definedGenos = new ClassTargetGenotype[alleles.length];
 		for (int aIdx = 0; aIdx < alleles.length; aIdx++) {
-			definedGenos[aIdx] = new AlleleClassGenotype((AlleleClassTarget)target, aIdx);
+			definedGenos[aIdx] = new ClassTargetGenotype((ClassTarget)target, aIdx);
 		}
 	}
 	
@@ -48,4 +48,24 @@ public class AlleleClassGenotyper extends TargetGenotyper {
 		}
 		return targetGenos;	
 	}
+	
+	public static class ClassTargetGenotype extends TargetGenotype {
+		ClassTarget target;
+		int alleleIdx;
+		
+		public ClassTargetGenotype(ClassTarget target, int alleleIdx) {
+			super(TextUtilities.stringArrayToString (target.getAlleles()[alleleIdx].getSequences()), target);
+			this.target = target;
+			this.alleleIdx = alleleIdx;
+		}
+		public ClassAllele getAllele () {
+			return target.getAlleles()[alleleIdx];
+		}
+	}
+	
+	public static class UnlistedAlleleTargetGenotype extends TargetGenotype {
+		public UnlistedAlleleTargetGenotype (String seq, ClassTarget target) {
+			super(seq, target);
+		}
+	};
 }

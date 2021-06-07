@@ -22,14 +22,6 @@ public class TargetGenotype {
 		return target;
 	}
 	
-	public boolean isReferenceAllele () {
-	    if ((target instanceof AlignmentTarget) && isValidGenotype()) {
-	    	String refSeq = ((AlignmentTarget)target).getTargetRefSeq();
-		    return (ntGenotype.equals(refSeq));
-	    }
-    	return false;
-	}
-	
 	public boolean isValidGenotype() {
 		return ((ntGenotype != null) && (target != null));
 	}

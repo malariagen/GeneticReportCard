@@ -1,9 +1,8 @@
 package org.cggh.bam.sampleClass;
 
 import org.cggh.bam.*;
-import org.cggh.bam.genotyping.AlleleValidator;
-import org.cggh.bam.sampleClass.AlleleClassTarget.*;
-import org.cggh.bam.sampleClass.AlleleClassAnalyzer.*;
+//import org.cggh.bam.genotyping.*;
+import org.cggh.bam.sampleClass.ClassTarget.*;
 import org.cggh.bam.target.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.exceptions.*;
@@ -18,7 +17,8 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
-	private SampleClassConfig            config;
+	private SampleClassConfig     config;
+	//private LabelCounterGenotyper genotyper;
 	
 	private HashMap<String,Integer>[]    alleleIdxTables;
 	
@@ -40,15 +40,15 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		log.info("Starting " + sample.getName());
 		try {
 			File outFolder = getSampleSubfolder (outRootFolder, sample, true);
-			AlleleClassAnalyzer analyzer = new AlleleClassAnalyzer (config, sample, outFolder);
-			SampleAlleleClassResults sr = analyzer.analyzeSample();
+			SampleClassAnalyzer analyzer = new SampleClassAnalyzer (config, outFolder);
+			SampleCall call = analyzer.analyzeSample(sample);
 			
 			// Analyze unlisted alleles: if they are very similar to listed ones, and can be 
 			// assigned to a sample class, add them to the relevant counter
-			analyzeUnlistedAlleles (sr);
+			analyzeUnlistedAlleles (call);
 			
 			// Write out the results
-			outputSampleResults (sr);
+			outputSampleResults (call);
 			
 		} catch (Exception e) {
 			log.info("Aborting " + sample.getName());
@@ -58,50 +58,49 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		log.info("Completed " + sample.getName());
 	}
 	
-	private static final String[] LISTED_ALLELES_HEADERS = {"Batch","Sample","Locus","Target","Allele","Count","SampleClass"};
+	private static final String[] LISTED_ALLELES_HEADERS = {"Batch","Sample","Locus","Target","Allele","Count","TargetCall"};
 	private static final String[] UNLISTED_ALLELES_HEADERS = {"Batch","Sample","Locus","Target","Allele","Count","Proportion","Closest","Diff"};
-	
-	private AlleleValidator validator = new AlleleValidator(0.05); // 5% total reads is the min to call an allele
 	
 	/*
 	 * Write out the results for this sample into two files: one of counts of listed sample class-specific alleles,
 	 * and one for alleles that were not listed.
 	 */
-	protected void outputSampleResults (SampleAlleleClassResults sr) throws AnalysisException, IOException  {
-		Sample sample = sr.getSample();
+	protected void outputSampleResults (SampleCall call) throws AnalysisException, IOException  {
+		Sample sample = call.getSample();
 		File outFolder = getSampleSubfolder (outRootFolder, sample, true);
-
-		TableOutput alleleSetOut = new TableOutput (outFolder, sample.getName()+".classAlleles.tab", LISTED_ALLELES_HEADERS, 64 * 1024);		
-
-		SampleAlleleClassLocusResult[] locusResults = sr.getLocusResults();
-		for (int lIdx = 0; lIdx < locusResults.length; lIdx++) {
-			SampleAlleleClassLocusResult locusResult = locusResults[lIdx];
-			AlleleClassLocus locus = locusResult.getLocus();
-			
-			AlleleClassResult[] targetResults = locusResult.getTargetResults();
-			for (int tIdx = 0; tIdx < targetResults.length; tIdx++) {
-				AlleleClassResult targetResult = targetResults[tIdx];
-				AlleleClassTarget target = targetResult.getTarget();
-				
-				// Write out allele counts for each allele in the target allele set
-				ClassAllele[] alleles = target.getAlleles();
-				LabelCounter[] alleleCounters = targetResult.getAlleleSetCounters();
-				int totalReads = targetResult.getTotalReadCount();
-				for (int aIdx = 0; aIdx < alleles.length; aIdx++) {
-					
-					int alleleReads = alleleCounters[aIdx].getCount();
-					boolean isValidAllele = validator.isValidAllele(alleleReads, totalReads);
-					String classStr = isValidAllele ? alleleCounters[aIdx].getLabel() : "-";
-					
-					alleleSetOut.newRow();
-					alleleSetOut.appendValue(sample.getBatch());
-					alleleSetOut.appendValue(sample.getName());
-					alleleSetOut.appendValue(locus.getName());
-					alleleSetOut.appendValue(target.getName());
-					alleleSetOut.appendValue(alleles[aIdx].getName());
-					alleleSetOut.appendValue(alleleReads);
-					alleleSetOut.appendValue(classStr);
-				}
+		SampleTargetResult[] targetResults = call.getTargetResults();
+		
+		// Write out the class calls
+		String[] callHeaders = TextUtilities.mergeStringLists(new String[]{"Batch","Sample","Class"}, allTargetNames);
+		TableOutput callOut = new TableOutput (outFolder, sample.getName()+".classes.tab", callHeaders, 64 * 1024);		
+		callOut.newRow();
+		callOut.appendValue(sample.getBatch());
+		callOut.appendValue(sample.getName());
+		callOut.appendValue(call.getClassCall());
+		for (int tIdx = 0; tIdx < targetResults.length; tIdx++) {
+			callOut.appendValue(targetResults[tIdx].getCall());
+		}
+		callOut.close();
+		
+		// Write out the allele read counts
+		TableOutput alleleSetOut = new TableOutput (outFolder, sample.getName()+".classAlleles.tab", LISTED_ALLELES_HEADERS, 64 * 1024);
+		for (int tIdx = 0; tIdx < targetResults.length; tIdx++) {
+			SampleTargetResult targetResult = targetResults[tIdx];
+			ClassTarget target = targetResult.getTarget();
+			// Write out allele counts for each allele in the target allele set
+			ClassAllele[] alleles = target.getAlleles();
+			LabelCounter[] alleleCounters = targetResult.getAlleleCounters();
+			String[] classCalls = targetResult.getClassTargetCalls();
+			for (int aIdx = 0; aIdx < alleles.length; aIdx++) {
+				int alleleReads = alleleCounters[aIdx].getCount();
+				alleleSetOut.newRow();
+				alleleSetOut.appendValue(sample.getBatch());
+				alleleSetOut.appendValue(sample.getName());
+				alleleSetOut.appendValue(target.getLocus().getName());
+				alleleSetOut.appendValue(target.getName());
+				alleleSetOut.appendValue(alleles[aIdx].getName());
+				alleleSetOut.appendValue(alleleReads);
+				alleleSetOut.appendValue(classCalls[aIdx]);
 			}
 		}
 		alleleSetOut.close();
@@ -134,42 +133,103 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 			}
 		}
 
-		// Process one class at a time to get the overall call for the sample
-		String[] sampleClasses = callSamples (samples, allTargets, targetCalls);
-
 		// Write the calls out
-		writeAggregateResults (samples, sampleClasses, targetCalls, false);
+		SampleClassCall[] calls = readAllClassCalls (samples);
+		writeAggregateClassCalls (calls);
 
 		// Write the read counts out
-		writeAggregateResults (samples, sampleClasses, targetCalls, true);
-		
+		writeAggregateSampleCounts (samples, targetCalls);
+				
 		// Write out unlisted alleles to file for all samples
 		writeUnlistedAllelesByTarget (samples, classReadTotals);
 	}
 	
-	private void writeAggregateResults (Sample[] samples, String[] sampleClasses, TargetCall[][] targetCalls, boolean outputCounts) throws AnalysisException {
-
-		String[] fixedHeaders = outputCounts ? new String[] {"Batch","Sample"} : new String[] {"Batch", "Sample", "Class"};
-		String[] headers = TextUtilities.mergeStringLists(fixedHeaders, allTargetNames);
-		String filename = outputCounts ? "AllSamples-AllTargets.counts.tab" : "AllSamples-AllTargets.classes.tab";
-		TableOutput out = new TableOutput (outRootFolder, filename, headers, 64 * 1024);
-		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
+	private void writeAggregateClassCalls (SampleClassCall[] sampleCalls) throws AnalysisException {
+		String[] headers = TextUtilities.mergeStringLists(new String[]{"Batch","Sample","Class"}, allTargetNames);
+		TableOutput out = new TableOutput (outRootFolder, "AllSamples-AllTargets.classes.tab", headers, 64 * 1024);
+		for (int sIdx = 0; sIdx < sampleCalls.length; sIdx++) {
 			out.newRow();
-			out.appendValue(samples[sIdx].getBatch());
-			out.appendValue(samples[sIdx].getName());
-			if (!outputCounts) {
-				out.appendValue(sampleClasses[sIdx]);
-			}
+			Sample sample = sampleCalls[sIdx].sample;
+			out.appendValue(sample.getBatch());
+			out.appendValue(sample.getName());
+			out.appendValue(sampleCalls[sIdx].sampleCall);
 			for (int tIdx = 0; tIdx < allTargetNames.length; tIdx++) {
-				String value = outputCounts ? 
-						targetCalls[sIdx][tIdx].getCountsLabel() :
-				        targetCalls[sIdx][tIdx].getCallLabel();
-				out.appendValue(value);
+				out.appendValue(sampleCalls[sIdx].targetCalls[tIdx]);
 			}
 		}
 		out.close();
 	}
 	
+	private void writeAggregateSampleCounts (Sample[] samples, TargetCall[][] targetCalls) throws AnalysisException {
+		String[] headers = TextUtilities.mergeStringLists(new String[]{"Batch","Sample"}, allTargetNames);
+		TableOutput out = new TableOutput (outRootFolder, "AllSamples-AllTargets.counts.tab", headers, 64 * 1024);
+		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
+			out.newRow();
+			out.appendValue(samples[sIdx].getBatch());
+			out.appendValue(samples[sIdx].getName());
+			for (int tIdx = 0; tIdx < allTargetNames.length; tIdx++) {
+				out.appendValue(targetCalls[sIdx][tIdx].getCountsLabel());
+			}
+		}
+		out.close();
+	}
+	
+	private SampleClassCall[] readAllClassCalls (Sample[] samples) throws AnalysisException {
+		
+		SampleClassCall[] results = new SampleClassCall[samples.length];
+		
+		// Go through all the samples, reading in all the allele counts for each target, and put them in the allele read count objects
+		for (int sIdx = 0; sIdx < samples.length; sIdx++) {
+			Sample sample = samples[sIdx];
+			File sampleFolder = getSampleSubfolder (outRootFolder, sample, true);
+			File sampleFile = new File (sampleFolder, sample.getName()+".classes.tab");
+			if (!sampleFile.exists() || !sampleFile.canRead()) {
+				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
+				continue;
+			}
+			TableInput tif = new TableInput (sampleFile);
+			int classFIdx       = tif.getFieldIndex("Class");
+			int[] targetFIdxes = new int[allTargets.length]; 
+			for (int idx = 0; idx < allTargetNames.length; idx++) {
+				targetFIdxes[idx] = tif.getFieldIndex(allTargetNames[idx]);
+			}
+			try {
+				String[] inFields = tif.getNextValidLine();
+				if (inFields == null) {
+					break;
+				}
+				String classCall = inFields[classFIdx];
+				if ("-".equals(classCall)) {
+					classCall = null;
+				}
+				String[] targetCalls = new String[allTargets.length];
+				for (int idx = 0; idx < allTargets.length; idx++) {
+				    int fIdx = targetFIdxes[idx];
+				    targetCalls[idx] = inFields[fIdx];
+					if ("-".equals(targetCalls[idx])) {
+						targetCalls[idx] = null;
+					}
+				}
+				results[sIdx] = new SampleClassCall(sample, classCall, targetCalls);
+			} finally {
+				tif.close();
+			}
+		}
+		return results;
+	}
+
+	private class SampleClassCall {
+		Sample   sample;
+		String   sampleCall;
+		String[] targetCalls;
+
+		public SampleClassCall(Sample sample, String sampleCall, String[] targetCalls) {
+			super();
+			this.sample = sample;
+			this.sampleCall = sampleCall;
+			this.targetCalls = targetCalls;
+		}
+	}
 	
 	private ClassAlleleCounts[] readAllClassAlleleCounts (Sample[] samples) throws AnalysisException {
 		
@@ -193,7 +253,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 			int targetFIdx      = tif.getFieldIndex("Target");
 			int alleleFldIdx    = tif.getFieldIndex("Allele");
 			int countFldIdx     = tif.getFieldIndex("Count");
-			int classFieldIdx   = tif.getFieldIndex("SampleClass");
+			int tCallFieldIdx   = tif.getFieldIndex("TargetCall");
 			try {
 				while (true) {
 					String[] inFields = tif.getNextValidLine();
@@ -204,7 +264,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 					if (count == 0) {
 						continue;
 					}
-					String classCall = inFields[classFieldIdx];
+					String classCall = inFields[tCallFieldIdx];
 					if ("-".equals(classCall)) {
 						continue;
 					}
@@ -222,26 +282,15 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		return targetCounts;
 	}
 	
+
 	private class TargetCall {
 		ArrayList<TargetClassCall> callList = new ArrayList<TargetClassCall>();
-		
-		public boolean isEmpty () {
-			return callList.isEmpty();
-		}
 		
 		public void addClassCall (String classCall, int readCount) {
 			if (classCall == null) {
 				return;
 			}
 			callList.add(new TargetClassCall(classCall, readCount));
-		}
-		
-		public TargetClassCall[] getClassCalls() {
-			if (callList.isEmpty()) {
-				return null;
-			}
-			TargetClassCall[] result = callList.toArray(new TargetClassCall[callList.size()]);
-			return result;
 		}
 		
 		public String getCountsLabel () {
@@ -295,7 +344,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		public ClassAlleleCounts (int targetIdx, Sample[] samples) {
 			this.samples = samples;
 			this.targetIdx = targetIdx;
-			this.alleles = ((AlleleClassTarget)allTargets[targetIdx]).getAlleles();
+			this.alleles = ((ClassTarget)allTargets[targetIdx]).getAlleles();
 			this.counts = new int[samples.length][alleles.length];
 			this.calls = new TargetCall[samples.length];
 			for (int sIdx = 0; sIdx < samples.length; sIdx++) {
@@ -359,7 +408,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		HashMap<String,Integer>[] result = new HashMap[allTargets.length];
 		for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
 			HashMap<String,Integer> alleleIdxTable = new HashMap<String,Integer>();
-			ClassAllele[] alleles = ((AlleleClassTarget)allTargets[tIdx]).getAlleles();
+			ClassAllele[] alleles = ((ClassTarget)allTargets[tIdx]).getAlleles();
 			for (int i = 0; i < alleles.length; i++) {
 				alleleIdxTable.put(alleles[i].getName(), i);
 			}
@@ -367,46 +416,40 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		}
 		return result;
 	}
-	
+
 	/* ==========================================================
 	 * Unlisted alleles analysis
 	 * ==========================================================
 	 */
-	private void analyzeUnlistedAlleles (SampleAlleleClassResults sr) throws AnalysisException, IOException  {
+	private void analyzeUnlistedAlleles (SampleCall call) throws AnalysisException, IOException  {
+		SampleTargetResult[] targetResults = call.getTargetResults();
 
 		UnlistedAllele[][] allUnlistedAlleles = new UnlistedAllele[allTargets.length][];
-		int allTargetIdx = 0;
-		SampleAlleleClassLocusResult[] locusResults = sr.getLocusResults();
-		for (int lIdx = 0; lIdx < locusResults.length; lIdx++) {
-			SampleAlleleClassLocusResult locusResult = locusResults[lIdx];
-			AlleleClassLocus locus = locusResult.getLocus();
-			AlleleClassResult[] targetResults = locusResult.getTargetResults();
-			for (int tIdx = 0; tIdx < targetResults.length; tIdx++) {
-				AlleleClassResult targetResult = targetResults[tIdx];
-				AlleleClassTarget target = targetResult.getTarget();
-				LabelCounter[] alleleSetCounters = targetResult.getAlleleSetCounters();
-				double totalReads = targetResult.getTotalReadCount();
-				
-				// Analyze unlisted alleles: if the allele is very similar to a listed allele (1 mismatch max),
-				// and more different from other sample class alleles, and it is in at least 10 reads, then merge it with
-				// the class with the most similar allele (add reads to the counter)
-				ArrayList<UnlistedAllele> unlistedAlleleList = new ArrayList<UnlistedAllele>();
-				LabelCounter[] uCounters = targetResult.getUnlistedAlleleCounters();
-				for (int uIdx = 0; uIdx < uCounters.length; uIdx++) {
-					String uAllele = uCounters[uIdx].getLabel();
-					int uCount = uCounters[uIdx].getCount();
-					TargetAlleleSimilarity sim = new TargetAlleleSimilarity(uAllele, target);
-					if ((uCount >= 10) && sim.callBySimilarity) {
-						alleleSetCounters[sim.mostSimilarAlleleIdx].add(uCount);
-					} else {
-						double uProp = ((double)uCount) / totalReads;
-						unlistedAlleleList.add(new UnlistedAllele (locus.getName(), target.getName(), uAllele, uCount, uProp, sim));
-					}
+		for (int tIdx = 0; tIdx < allTargets.length; tIdx++) {
+			SampleTargetResult targetResult = targetResults[tIdx];
+			ClassTarget target = targetResult.getTarget();
+			LabelCounter[] alleleSetCounters = targetResult.getAlleleCounters();
+			double totalReads = targetResult.getTotalReadCount();
+			
+			// Analyze unlisted alleles: if the allele is very similar to a listed allele (1 mismatch max),
+			// and more different from other sample class alleles, and it is in at least 10 reads, then merge it with
+			// the class with the most similar allele (add reads to the counter)
+			ArrayList<UnlistedAllele> unlistedAlleleList = new ArrayList<UnlistedAllele>();
+			LabelCounter[] uCounters = targetResult.getUnlistedAlleleCounters();
+			for (int uIdx = 0; uIdx < uCounters.length; uIdx++) {
+				String uAllele = uCounters[uIdx].getLabel();
+				int uCount = uCounters[uIdx].getCount();
+				TargetAlleleSimilarity sim = new TargetAlleleSimilarity(uAllele, target);
+				if ((uCount >= 10) && sim.callBySimilarity) {
+					alleleSetCounters[sim.mostSimilarAlleleIdx].add(uCount);
+				} else {
+					double uProp = ((double)uCount) / totalReads;
+					unlistedAlleleList.add(new UnlistedAllele (target.getLocus().getName(), target.getName(), uAllele, uCount, uProp, sim));
 				}
-				allUnlistedAlleles[allTargetIdx++] = unlistedAlleleList.toArray(new UnlistedAllele[unlistedAlleleList.size()]);
 			}
+			allUnlistedAlleles[tIdx] = unlistedAlleleList.toArray(new UnlistedAllele[unlistedAlleleList.size()]);
 		}
-		outputUnlistedAlleles (sr.getSample(), allUnlistedAlleles);
+		outputUnlistedAlleles (call.getSample(), allUnlistedAlleles);
 	}
 
 	/*
@@ -563,12 +606,12 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	
 	
 	private class TargetAlleleSimilarity {
-		AlleleClassTarget target;
+		ClassTarget target;
 		int mostSimilarAlleleIdx;
 		int leastMismatches;
 		boolean callBySimilarity;
 		
-		public TargetAlleleSimilarity(String allele, AlleleClassTarget target) {
+		public TargetAlleleSimilarity(String allele, ClassTarget target) {
 			this.target = target;
 			char[] seq = allele.toCharArray();
 			int len = seq.length;
@@ -646,6 +689,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 	 * Sample Class Calling from all targets
 	 * ==========================================================
 	 */
+	/*
 	private String[] callSamples (Sample[] samples, Target[] allTargets, TargetCall[][] targetCalls) {
 		
 		// Get the list of sample classes we're trying to assign
@@ -708,11 +752,8 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 		}
 		return sampleClasses;
 	}
+	*/
 	
-	
-	
-	
-
 	/* ==========================================================
 	 * Single Sample Execution
 	 * ==========================================================
@@ -763,7 +804,7 @@ public class SampleClassAnalysis extends SampleTargetAnalysis  {
 			try {	
 				SampleClassAnalysis task = new SampleClassAnalysis(configFile, refFastaFile, rootFolder);
 				MultiSampleAnalysis multi = new MultiSampleAnalysis(sampleListFile, maxThreads);
-				multi.execute(task);
+				multi.execute(task);	// Calls analyzeSample() for each sample
 				task.analyzeAllSampleResults(multi.getSamples());
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

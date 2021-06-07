@@ -1,7 +1,7 @@
 package org.cggh.bam.target;
 
-import org.cggh.common.exceptions.AnalysisException;
-import java.io.File;
+import org.cggh.common.exceptions.*;
+import java.io.*;
 
 
 public class AlignmentTargetAnalysisConfig extends TargetAnalysisConfig {

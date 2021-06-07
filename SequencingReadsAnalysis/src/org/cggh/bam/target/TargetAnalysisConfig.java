@@ -20,13 +20,15 @@ public class TargetAnalysisConfig extends LocusAnalysisConfig {
 		Locus[] baseLoci = super.parseLocusConfig();
 		TargetLocus[] loci = new TargetLocus[baseLoci.length];
 		for (int lIdx = 0; lIdx < loci.length; lIdx++) {
-			Locus locus = baseLoci[lIdx];
-			String propLocusPrefix = propPrefix+"locus."+locus.getName();			
+			Locus bLocus = baseLoci[lIdx];
+			String propLocusPrefix = propPrefix+"locus."+bLocus.getName();			
 			// If we're using the BAM alignment, then the target will be aligned on the reference chromosome.
 			// If we do not use the alignment, just use a ficticious name (the name of the locus)
-			String targetChromosomeName = useBamAlignment ? locus.getReadSearchInterval().getChromosome() : locus.getName();
+			String targetChromosomeName = useBamAlignment ? bLocus.getReadSearchInterval().getChromosome() : bLocus.getName();
+			TargetLocus locus = new TargetLocus(bLocus.getName(), bLocus.getReadSearchIntervalCoords(), bLocus.getAnchors(), bLocus.getAnalyzeUnmappedReads());
 			Target[] targets = parseTargets(propLocusPrefix, targetChromosomeName);
-			loci[lIdx] = new TargetLocus(locus.getName(), locus.getReadSearchIntervalCoords(), locus.getAnchors(), locus.getAnalyzeUnmappedReads(), targets);
+			locus.setTargets(targets);
+			loci[lIdx] = locus;
 		}
 		return loci;
 	}
