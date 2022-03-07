@@ -95,6 +95,15 @@ public class ColumnFileReader {
 		throw new AnalysisException("Column " + colName + " not found in file.");
 	}
 	
+	public boolean hasColumn (String colName) throws AnalysisException {
+		for (int fIdx = 0; fIdx < columnNames.length; fIdx++) {
+			if (colName.equals(columnNames[fIdx])) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	public ColumnReader getColumnReader (String[] queryColNames) throws AnalysisException {
 		return new ColumnReader (queryColNames);
 	}
