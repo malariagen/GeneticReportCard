@@ -5,7 +5,7 @@ import java.io.*;
 import java.util.*;
 
 
-public class BaseConfig {
+public abstract class BaseConfig {
 	
 	public static final String CONFIG_IMPORT_PROP     = "analysis.config.import";
 
@@ -23,9 +23,7 @@ public class BaseConfig {
 		return configProperties;
 	}
 	
-	public String getPrintableDisplay() {
-		return this.toString();
-	}
+	public abstract String getPrintableDisplay();
 	
 	
 	/* ==========================================================
