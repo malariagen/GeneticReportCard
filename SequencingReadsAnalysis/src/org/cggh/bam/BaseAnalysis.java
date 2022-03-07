@@ -78,22 +78,18 @@ public abstract class BaseAnalysis {
 	
 	
 	/*
-	 * Divide the samples into nested subfolders so we don't end up with thousands of files in the same folder
+	 * Divide the samples into subfolders so we don't end up with thousands of files in the same folder
 	 */
 	protected File getSampleSubfolder (File rootFolder, Sample sample, boolean createIfMissing) {
-		//String subFolderName = sample.getName().substring(0, 4);
-		String subFolderName = sample.getBatch();
-		if (subFolderName != null) {
-			subFolderName = subFolderName.trim();
-			if (subFolderName.isEmpty()) {
-				subFolderName = null;
-			}
-		}
-		if (subFolderName == null) {
-			subFolderName = "NO_BATCH";
+		String batchName = sample.getBatch();
+		String subFolderName;
+		if (batchName == null) {
+			subFolderName = sample.getName().substring(0, 4);
+		} else {
+			subFolderName = Sample.NO_BATCH.equals(batchName) ? "NO_BATCH" : batchName;
 		}
 
-		File subFolder = null;
+		File subFolder;
 		try {
 			subFolder = FileUtilities.checkFolder(rootFolder, subFolderName, createIfMissing);
 		} catch (AnalysisException e) {

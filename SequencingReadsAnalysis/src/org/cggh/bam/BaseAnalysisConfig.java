@@ -4,15 +4,15 @@ import org.cggh.common.config.*;
 import org.cggh.common.exceptions.*;
 import java.io.*;
 
-public abstract class BaseAnalysisConfig extends BaseConfig {
+public class BaseAnalysisConfig extends BaseConfig {
 	
-	public static final int DEFAULT_MAX_READ_MISMATCHES = 10;
+	public static final int    DEFAULT_MIN_CALL_READS      = 5;
+	public static final int    DEFAULT_MIN_ALLELE_READS    = 2;
+	public static final double DEFAULTPROP_MIN_ALLELE_PROP = 0.1;
 	
     public static final String PROP_MIN_CALL_READS      = "genotype.minCallReadCount";
 	public static final String PROP_MIN_ALLELE_READS    = "genotype.minAlleleReadCount";
 	public static final String PROP_MIN_ALLELE_PROP     = "genotype.minAlleleReadProp";
-	public static final String PROP_MAX_INDEL_SIZE      = "alignment.maxIndelSize";
-	public static final String PROP_MAX_READ_MISMATCHES = "alignment.maxReadMismatches";
 	
 	protected String  propPrefix;
 
@@ -20,22 +20,14 @@ public abstract class BaseAnalysisConfig extends BaseConfig {
 	protected int     minAlleleReadCount;
 	protected double  minAlleleReadProp;
 	
-	protected int     maxIndelSize;
-	protected int     maxReadMismatches;
-	protected boolean useBamAlignment;
-	protected boolean analyzeUnmappedReads;
 	
-	public BaseAnalysisConfig (File configFile, String propPrefix, boolean useBamAlignment) throws AnalysisException  {
+	public BaseAnalysisConfig (File configFile, String propPrefix) throws AnalysisException  {
 		super(configFile);
 		this.propPrefix = propPrefix;
 		
-		minCallReadCount   = this.getIntProperty(propPrefix+PROP_MIN_CALL_READS,      5);	
-		minAlleleReadCount = this.getIntProperty(propPrefix+PROP_MIN_ALLELE_READS,    2);	
-		minAlleleReadProp  = this.getDoubleProperty(propPrefix+PROP_MIN_ALLELE_PROP,  0.1);
-		maxIndelSize       = this.getIntProperty(propPrefix+PROP_MAX_INDEL_SIZE,      0);	
-		maxReadMismatches  = this.getIntProperty(propPrefix+PROP_MAX_READ_MISMATCHES, DEFAULT_MAX_READ_MISMATCHES);	
-		
-		this.useBamAlignment = useBamAlignment;
+		minCallReadCount   = this.getIntProperty(propPrefix+PROP_MIN_CALL_READS,      DEFAULT_MIN_CALL_READS);	
+		minAlleleReadCount = this.getIntProperty(propPrefix+PROP_MIN_ALLELE_READS,    DEFAULT_MIN_ALLELE_READS);	
+		minAlleleReadProp  = this.getDoubleProperty(propPrefix+PROP_MIN_ALLELE_PROP,  DEFAULTPROP_MIN_ALLELE_PROP);
 	}
 	
 	public int getMinCallReadCount() {
@@ -49,23 +41,11 @@ public abstract class BaseAnalysisConfig extends BaseConfig {
 	public double getMinAlleleReadProp() {
 		return minAlleleReadProp;
 	}
-
-	public int getMaxIndelSize() {
-		return maxIndelSize;
+	
+	public String getPrintableDisplay() {
+		return "minCallReadCount = "  + getMinCallReadCount() +
+		     "\nminAlleleReadCount = "+ getMinAlleleReadCount() +
+             "\nminAlleleReadProp = " + getMinAlleleReadProp();    		
 	}
 
-	public int getMaxReadMismatches() {
-		return maxReadMismatches;
-	}
-	
-	public boolean getUseBamAlignment () {
-		return useBamAlignment;
-	}
-	
-	public boolean getAnalyzeUnmappedReads() {
-		return analyzeUnmappedReads;
-	}
-	
-	//public abstract Locus[] parseLocusConfig () throws AnalysisException;
-	
 }

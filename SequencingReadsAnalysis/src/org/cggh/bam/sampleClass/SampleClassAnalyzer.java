@@ -32,7 +32,7 @@ public class SampleClassAnalyzer {
 	public SampleClassAnalyzer (SampleClassConfig config, File outFolder) throws AnalysisException  {
 		this.config = config;
 		this.outFolder = outFolder;
-		this.genotyper = new LabelCounterGenotyper(config.getMinCallReadCount(), config.getMinAlleleReadCount(), config.getMinAlleleReadProp());
+		this.genotyper = new LabelCounterGenotyper(config);
 
 		this.loci = (ClassLocus[])config.getLoci();
 		ArrayList<ClassTarget> tList = new ArrayList<ClassTarget>();
@@ -49,7 +49,7 @@ public class SampleClassAnalyzer {
 		
 		
 		// Read the reads from the SAM file
-		ReadsRetriever srr = new ReadsRetriever (config);
+		ReadsRetriever srr = new ReadsRetrieverFromAlignment (config);
 		ArrayList<Read>[] mappedReadLists = srr.retrieveSampleReads(sample);
 		//outputSampleReads (sample, mappedReadLists);
 		

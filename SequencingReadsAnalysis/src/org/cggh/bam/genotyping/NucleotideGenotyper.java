@@ -1,12 +1,13 @@
 package org.cggh.bam.genotyping;
 
+import org.cggh.bam.*;
 import org.cggh.common.counters.AlleleCounter;
 import org.cggh.common.counters.AlleleCounter.AlleleCount;
 
 public class NucleotideGenotyper extends Genotyper {
 	
-    public NucleotideGenotyper(int minCallReads, int minAlleleReads, double minAlleleProp) {
-		super(minCallReads, minAlleleReads, minAlleleProp);
+    public NucleotideGenotyper(BaseAnalysisConfig config) {
+		super(config);
 	}
 
 	public boolean hasSufficientReads (AlleleCounter aCounts) {

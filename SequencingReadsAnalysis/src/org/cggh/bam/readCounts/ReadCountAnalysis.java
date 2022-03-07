@@ -47,7 +47,7 @@ public class ReadCountAnalysis extends SampleAnalysis {
 	public void analyzeSampleReads(Sample sample) throws AnalysisException {
 			
 	    // See GentypingConfig for parameters. Right now, it's min 5 reads for a call, min 5% total reads to call an allele
-	    NucleotideGenotyper bg = new NucleotideGenotyper(config.getMinCallReadCount(), config.getMinAlleleReadCount(), config.getMinAlleleReadProp());
+	    NucleotideGenotyper bg = new NucleotideGenotyper(config);
 
 	    log.info("Starting " + sample.getName());  
 		int[] refCounts = new int[genoPositions.length];

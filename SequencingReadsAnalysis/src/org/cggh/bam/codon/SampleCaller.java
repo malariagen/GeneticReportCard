@@ -13,7 +13,7 @@ public class SampleCaller {
 	private LabelCounterGenotyper genotyper;
 	
 	public SampleCaller(BaseAnalysisConfig config) {
-		genotyper = new LabelCounterGenotyper(config.getMinCallReadCount(), config.getMinAlleleReadCount(), config.getMinAlleleReadProp());
+		genotyper = new LabelCounterGenotyper(config);
 	}
 
 	public SampleCall callSample (AlignmentTarget target, LabelCounters ntAlleleCounters) {

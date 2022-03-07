@@ -1,16 +1,15 @@
 package org.cggh.bam.genotyping;
 
+import org.cggh.bam.BaseAnalysisConfig;
+
 public class AlleleValidator {
 	
 	protected double readsPropMultiplier;
 	protected int    totalReadsThreshold;
 	
-	
-	public AlleleValidator () {
-		this(GenotypingConfig.ALLELE_READS_PROPORTION_THRESHOLD);
-	}
-	
-	public AlleleValidator (double proportionThreshold) {
+	public AlleleValidator (BaseAnalysisConfig config) {
+		double proportionThreshold = config.getMinAlleleReadProp();
+		
 		// This is a rounding trick to make sure the threshold is included in the valid interval.
 		// e.g. if threshold is 5%, and total reads are 60, then min reads should be 3, not 4 
 		// (which would be the case without this tiny adjustment)

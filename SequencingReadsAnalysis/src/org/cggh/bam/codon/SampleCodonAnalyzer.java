@@ -21,7 +21,7 @@ public class SampleCodonAnalyzer {
 	 * ==========================================================
 	 */
 	public SampleCodonAnalyzer (TargetAnalysisConfig config, Sample sample) throws AnalysisException  {
-		this.config = config;		
+		this.config = config;
 		this.loci = config.getLoci();
 		this.sample = sample;		
 		this.caller = new SampleCaller(config);
@@ -31,7 +31,7 @@ public class SampleCodonAnalyzer {
 	public SampleResults analyzeSample () throws AnalysisException, IOException  {
 		
 		// Read the reads from the SAM file
-		ReadsRetriever srr = new ReadsRetriever (config);
+		ReadsRetriever srr = new ReadsRetrieverFromAlignment (config);
 		ArrayList<Read>[] mappedReadLists = srr.retrieveSampleReads(sample);
 		
 		// Analyze each locus

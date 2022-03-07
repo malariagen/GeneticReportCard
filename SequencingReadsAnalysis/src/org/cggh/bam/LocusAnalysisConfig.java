@@ -3,12 +3,28 @@ package org.cggh.bam;
 import java.io.File;
 import org.cggh.common.exceptions.AnalysisException;
 
-public class LocusAnalysisConfig extends BaseAnalysisConfig {
+public abstract class LocusAnalysisConfig extends BaseAnalysisConfig {
 
-	protected Locus[] loci;
+	public static final int DEFAULT_MAX_READ_MISMATCHES = 10;
+
+	public static final String PROP_MAX_READ_MISMATCHES = "alignment.maxReadMismatches";
+	public static final String PROP_MAX_INDEL_SIZE      = "alignment.maxIndelSize";
 	
+	protected Locus[] loci;
+
+	protected boolean analyzeUnmappedReads;
+	protected int     maxReadMismatches;
+	protected int     maxIndelSize;
+	protected boolean useBamAlignment;
+	
+
 	public LocusAnalysisConfig(File configFile, String propPrefix, boolean useBamAlignment) throws AnalysisException {
-		super(configFile, propPrefix, useBamAlignment);
+		super(configFile, propPrefix);
+		
+		maxReadMismatches  = this.getIntProperty(propPrefix+PROP_MAX_READ_MISMATCHES, DEFAULT_MAX_READ_MISMATCHES);	
+		maxIndelSize       = this.getIntProperty(propPrefix+PROP_MAX_INDEL_SIZE,      0);	
+		useBamAlignment = useBamAlignment;
+
 		loci = parseLocusConfig ();
 		analyzeUnmappedReads = false;
 		for (int i = 0; i < loci.length; i++) {
@@ -22,6 +38,30 @@ public class LocusAnalysisConfig extends BaseAnalysisConfig {
 	public Locus[] getLoci() {
 		return loci;
 	}
+	
+	public int getMaxReadMismatches() {
+		return maxReadMismatches;
+	}
+	
+	public int getMaxIndelSize() {
+		return maxIndelSize;
+	}
+	
+	public boolean getUseBamAlignment () {
+		return useBamAlignment;
+	}
+	
+	public boolean getAnalyzeUnmappedReads() {
+		return analyzeUnmappedReads;
+	}
+	
+	public String getPrintableDisplay() {
+	    return super.getPrintableDisplay() +
+	         "\nanalyzeUnmappedReads = " + getAnalyzeUnmappedReads() +
+		     "\nmaxReadMismatches = "    + getMaxReadMismatches() +
+		     "\nmaxIndelSize = "         + getMaxIndelSize() +
+             "\nuseBamAlignment = "      + getUseBamAlignment();    		
+    }
 	
 	public Locus[] parseLocusConfig () throws AnalysisException {
 		String[] locusNames = getStringListProperty(propPrefix+"loci");

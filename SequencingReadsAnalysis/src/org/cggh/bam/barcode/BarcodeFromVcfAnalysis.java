@@ -2,7 +2,7 @@ package org.cggh.bam.barcode;
 
 import org.apache.commons.logging.*;
 import org.cggh.bam.*;
-import org.cggh.bam.genotyping.AlleleValidator;
+import org.cggh.bam.genotyping.*;
 import org.cggh.common.counters.*;
 import org.cggh.common.counters.AlleleCounter.*;
 import org.cggh.common.exceptions.*;
@@ -19,16 +19,18 @@ import java.util.*;
 
 
 public class BarcodeFromVcfAnalysis extends SampleAnalysis {
-	
-	public static final int MIN_READS_FOR_GENOTYPE = 5;
 
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
 	private GenomePosition[] snps;
 	private HashMap<String,Integer> snpMap;
+	private AlleleValidator gt;
+	private BaseAnalysisConfig config;
 
-	public BarcodeFromVcfAnalysis (File outRootFolder, File snpListFile) throws AnalysisException {
+	public BarcodeFromVcfAnalysis (File configFile, File outRootFolder, File snpListFile) throws AnalysisException {
 		super (outRootFolder);
+		config = new BarcodeConfig(configFile);
+		gt = new AlleleValidator(config);
 		snps = loadPositions (snpListFile);
 		snpMap = new HashMap<String,Integer>(snps.length);
 		for (int i = 0; i < snps.length; i++) {
@@ -36,8 +38,6 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 		}
 	}
 	
-	
-	private AlleleValidator gt = new AlleleValidator(0.05);
 	
 	public void analyzeSample(Sample sample) throws AnalysisException {
 		String sampleName = sample.getName();
@@ -118,7 +118,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 		public Genotype (NtAlleleCounter counter, char ref) {
 			AlleleCount[] aCounts = counter.getSortedAlleleCounts();
 			int totalReads = counter.getCumulativeCount();
-			if (totalReads >= MIN_READS_FOR_GENOTYPE) {
+			if (totalReads >= config.getMinCallReadCount()) {
 				for (int i = 0; i < aCounts.length; i++) {
 					AlleleCount c = aCounts[i];
 					if (!gt.isValidAllele(c.getCount(), totalReads)) {
@@ -396,16 +396,17 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	 */
 	public static class SingleSample {
 		public static void main(String[] args) {
-			if (args.length < 4) {
-				System.err.println("Usage: org.cggh.bam.barcode.BarcodeFromVcfAnalysis$SingleSample <batchId> <sampleId> <outputFolder> <snpListFile>");
+			if (args.length < 5) {
+				System.err.println("Usage: org.cggh.bam.barcode.BarcodeFromVcfAnalysis$SingleSample <configFile> <batchId> <sampleId> <outputFolder> <snpListFile>");
 				return;
 			}
-			String batchId = args[0];	            	log.info("BatchID: "+batchId);
-			String sampleId = args[1];	            	log.info("SampleID: "+sampleId);
-			File outRootFolder = new File(args[2]);		log.info("Output Root Folder: "+outRootFolder.getAbsolutePath());
-			File snpListFile = new File(args[3]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
+			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
+			String batchId = args[1];	            	log.info("BatchID: "+batchId);
+			String sampleId = args[2];	            	log.info("SampleID: "+sampleId);
+			File outRootFolder = new File(args[3]);		log.info("Output Root Folder: "+outRootFolder.getAbsolutePath());
+			File snpListFile = new File(args[4]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
 			try {
-				BarcodeFromVcfAnalysis task = new BarcodeFromVcfAnalysis(outRootFolder, snpListFile);
+				BarcodeFromVcfAnalysis task = new BarcodeFromVcfAnalysis(configFile, outRootFolder, snpListFile);
 				Sample sample = new Sample (batchId, sampleId, null);
 				task.analyzeSample(sample);
 			} catch (Exception e) {
@@ -418,19 +419,20 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	
 	public static class MultiSample {
 		public static void main(String[] args) {
-			if (args.length < 3) {
-				System.err.println("Usage: org.cggh.bam.barcode.BarcodeFromVcfAnalysis$MultiSample <sampleListFile> <outputFolder> <snpListFile>");
+			if (args.length < 4) {
+				System.err.println("Usage: org.cggh.bam.barcode.BarcodeFromVcfAnalysis$MultiSample <configFile> <sampleListFile> <outputFolder> <snpListFile>");
 				return;
 			}
-			File sampleListFile = new File(args[0]);	log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
-			File outRootFolder = new File(args[1]);		log.info("Output Root Folder: "+outRootFolder.getAbsolutePath());
-			File snpListFile = new File(args[2]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
+			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
+			File sampleListFile = new File(args[1]);	log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
+			File outRootFolder = new File(args[2]);		log.info("Output Root Folder: "+outRootFolder.getAbsolutePath());
+			File snpListFile = new File(args[3]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
 			
 			int maxThreads = Integer.parseInt(System.getProperty("maxThreads", "0"));
 			
 			try {
 				MultiSampleAnalysis multi = new MultiSampleAnalysis(sampleListFile, maxThreads);
-				BarcodeFromVcfAnalysis task = new BarcodeFromVcfAnalysis(outRootFolder, snpListFile);
+				BarcodeFromVcfAnalysis task = new BarcodeFromVcfAnalysis(configFile, outRootFolder, snpListFile);
 				multi.execute((SampleAnalysis) task);
 				task.analyzeAllSampleResults(multi.getSamples());
 			} catch (Exception e) {
@@ -444,16 +446,17 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 	
 	public static class MergeResults {
 		public static void main(String[] args) {
-			if (args.length < 3) {
-				System.err.println("Usage: org.cggh.bam.barcode.BarcodeFromVcfAnalysis$MergeResults <sampleListFile> <outputFolder> <snpListFile>");
+			if (args.length < 4) {
+				System.err.println("Usage: org.cggh.bam.barcode.BarcodeFromVcfAnalysis$MergeResults <configFile> <sampleListFile> <outputFolder> <snpListFile>");
 				return;
 			}
-			File sampleListFile = new File(args[0]);	log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
-			File outRootFolder = new File(args[1]);		log.info("Output Root Folder: "+outRootFolder.getAbsolutePath());
-			File snpListFile = new File(args[2]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
+			File configFile = new File(args[0]);		log.info("ConfigFile: "+configFile.getAbsolutePath());
+			File sampleListFile = new File(args[1]);	log.info("SampleListFile: " + sampleListFile.getAbsolutePath());
+			File outRootFolder = new File(args[2]);		log.info("Output Root Folder: "+outRootFolder.getAbsolutePath());
+			File snpListFile = new File(args[3]);		log.info("SNP List File: "+snpListFile.getAbsolutePath());
 			try {
 				Sample[] samples = new SampleList(sampleListFile, false).getSamples();
-				BarcodeFromVcfAnalysis task = new BarcodeFromVcfAnalysis(outRootFolder, snpListFile);
+				BarcodeFromVcfAnalysis task = new BarcodeFromVcfAnalysis(configFile, outRootFolder, snpListFile);
 				task.analyzeAllSampleResults(samples);
 			} catch (Exception e) {
 				log.error("Error executing task: " + e);

@@ -1,6 +1,5 @@
 package org.cggh.bam;
 
-import htsjdk.samtools.*;
 
 public class Read {
 	
@@ -18,22 +17,22 @@ public class Read {
 	private boolean isReversed;
 	private int     mappingStatus;
 	
-	public static Read createMappedRead (SAMRecord record, Locus locus, int readStartPos) {
-		return new Read (record, locus, readStartPos, MAPPED);
+	public static Read createMappedRead (ReadSource readSrc, Locus locus, int readStartPos) {
+		return new Read (readSrc, locus, readStartPos, MAPPED);
 	}
 	
-	public static Read createAnchoredRead (SAMRecord record, Locus locus, Anchor anchor, int anchorPos) {
-		return new Read (record, locus, (anchor.getPos()-anchorPos), ANCHORED);
+	public static Read createAnchoredRead (ReadSource readSrc, Locus locus, Anchor anchor, int anchorPos) {
+		return new Read (readSrc, locus, (anchor.getPos()-anchorPos), ANCHORED);
 	}
 	
-	private Read(SAMRecord record, Locus locus, int readStartPos, int mappingStatus) {
-		this.id = record.getReadName();
-		this.sequence = record.getReadString();
-		this.quality = record.getBaseQualityString();
+	private Read(ReadSource readSrc, Locus locus, int readStartPos, int mappingStatus) {
+		this.id = readSrc.getId();
+		this.sequence = readSrc.getSequence();
+		this.quality = readSrc.getQuality();
 		this.startPos = readStartPos;
-		this.isReversed = record.getReadNegativeStrandFlag();
+		this.isReversed = readSrc.isReversed();
 		// Trim SAM string line terminator if there is one
-		this.samString = record.getSAMString();
+		this.samString = readSrc.getSamString();
 		if (samString.charAt(samString.length()-1) == '\n') { 
 			samString = samString.substring(0, samString.length()-1);
 		}

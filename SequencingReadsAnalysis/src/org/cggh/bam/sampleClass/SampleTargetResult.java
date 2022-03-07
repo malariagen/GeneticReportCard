@@ -28,7 +28,7 @@ public class SampleTargetResult {
 			if ("-".equals(alleleLabel)) {
 				continue;
 			}
-			call = (call == null) ? alleleLabel : call+alleleLabel;
+			call = (call == null) ? alleleLabel : call+","+alleleLabel;
 		}
 	}
 	

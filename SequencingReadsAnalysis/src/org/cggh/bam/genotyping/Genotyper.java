@@ -1,5 +1,6 @@
 package org.cggh.bam.genotyping;
 
+import org.cggh.bam.*;
 
 public class Genotyper {
 	
@@ -7,11 +8,10 @@ public class Genotyper {
 	protected int minAlleleReads;
 	protected double minAlleleProp;
 	
-   public Genotyper(int minCallReads, int minAlleleReads, double minAlleleProp) {
-		super();
-		this.minCallReads = minCallReads;
-		this.minAlleleReads = minAlleleReads;
-		this.minAlleleProp = minAlleleProp;
+	public Genotyper(BaseAnalysisConfig config) {
+	    this.minCallReads = config.getMinCallReadCount();
+		this.minAlleleReads = config.getMinAlleleReadCount();
+		this.minAlleleProp = config.getMinAlleleReadProp();
 	}
 
 	public boolean hasSufficientReads (int totalReads) {

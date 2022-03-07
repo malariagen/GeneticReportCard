@@ -1,11 +1,12 @@
 package org.cggh.bam.genotyping;
 
+import org.cggh.bam.*;
 import org.cggh.common.counters.*;
 
 public class LabelCounterGenotyper extends Genotyper {
 	
-    public LabelCounterGenotyper(int minCallReads, int minAlleleReads, double minAlleleProp) {
-		super(minCallReads, minAlleleReads, minAlleleProp);
+	public LabelCounterGenotyper(BaseAnalysisConfig config) {
+		super(config);
 	}
     
 	public boolean hasSufficientReads (LabelCounters counts) {

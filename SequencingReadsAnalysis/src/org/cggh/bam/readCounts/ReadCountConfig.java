@@ -9,6 +9,10 @@ public class ReadCountConfig extends BaseAnalysisConfig {
 	public static final String PROP_PREFIX = "readCount.";
 	
 	public ReadCountConfig (File configFile) throws AnalysisException  {
-		super(configFile, PROP_PREFIX, true);
+		super(configFile, PROP_PREFIX);
 	}
+    
+	public String getPrintableDisplay() {
+	    return super.getPrintableDisplay();    		
+    }
 }

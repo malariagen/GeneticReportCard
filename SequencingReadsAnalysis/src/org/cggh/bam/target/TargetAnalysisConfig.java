@@ -56,4 +56,8 @@ public class TargetAnalysisConfig extends LocusAnalysisConfig {
 	protected Target createTarget (String name, String[] targetCoords, boolean isReverse) throws AnalysisException {
 		return new Target (name, targetCoords, isReverse);
 	}
+    
+	public String getPrintableDisplay() {
+	    return super.getPrintableDisplay();    		
+    }
 }

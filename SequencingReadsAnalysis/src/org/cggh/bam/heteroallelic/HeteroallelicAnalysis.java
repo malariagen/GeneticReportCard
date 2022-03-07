@@ -31,7 +31,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	private HeteroallelicConfig   config;
 	private SamReaderFactory      samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 	private SampleLocusLogFile    msgLog;
-	private AlleleValidator validator = new AlleleValidator(0.05); // 5% total reads is the min to call an allele
+	private AlleleValidator       validator;
 	
 
 	private static final String[] CALL_FILE_HEADERS = new String[] { "Batch", "Sample", "Locus", "Call", "Mutation", "MissingCodonCallsProp", "MedianReadCount", "MeanReadCount" };
@@ -41,6 +41,8 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 	public HeteroallelicAnalysis(File configFile, File refFastaFile, File outRootFolder) throws AnalysisException {
 		super(refFastaFile, outRootFolder);
 		config = new HeteroallelicConfig(configFile);
+		validator = new AlleleValidator(config);
+		
 	}
 	
 	public void analyzeSample(Sample sample) throws AnalysisException {

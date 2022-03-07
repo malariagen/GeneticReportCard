@@ -1,14 +1,15 @@
 package org.cggh.bam;
 
+import org.cggh.bam.target.TargetAnalysisConfig;
 import org.cggh.common.exceptions.*;
 import org.cggh.common.sequence.*;
 import java.util.*;
 
 public class ReadsAlignment {
 	
-	private static int maxReadMismatches = BaseAnalysisConfig.DEFAULT_MAX_READ_MISMATCHES;
+	private static int maxReadMismatches = TargetAnalysisConfig.DEFAULT_MAX_READ_MISMATCHES;
 	
-	public static void configure (BaseAnalysisConfig config) {
+	public static void configure (LocusAnalysisConfig config) {
 		ReadsAlignment.maxReadMismatches  = config.getMaxReadMismatches();	
 	}
 	

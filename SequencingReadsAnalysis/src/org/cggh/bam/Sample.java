@@ -4,6 +4,9 @@ import java.io.File;
 
 
 public class Sample {
+	
+	public static final String NO_BATCH = "-";
+	
 	private String batch;
 	private String name;
 	private File   bamFile;
@@ -12,6 +15,10 @@ public class Sample {
 		this.batch = batch;
 		this.name = name;
 		this.bamFile = bamFile;
+	}
+	
+	public Sample(String name, File bamFile) {
+		this (null, name, bamFile);
 	}
 	
 	public String getBatch() {
