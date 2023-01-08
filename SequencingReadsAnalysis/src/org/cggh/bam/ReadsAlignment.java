@@ -137,11 +137,12 @@ public class ReadsAlignment {
 		
 		// Trim the alignment to fit in the locus region being investigated
 		int locusStart = locus.getReadSearchInterval().getStartPos();
-		if (alignStart < locusStart) {
+		int locusEnd   = locus.getReadSearchInterval().getStopPos();
+		// Include rare case (typically with 1 read only) where the alignment is completely outside the locus
+		if ((alignStart < locusStart) || (alignStart > locusEnd)) {
 			alignStart = locusStart;
 		}
-		int locusEnd = locus.getReadSearchInterval().getStopPos();
-		if (alignEnd > locusEnd) {
+		if ((alignEnd > locusEnd) || (alignEnd < locusStart)) {
 			alignEnd = locusEnd;
 		}
 		

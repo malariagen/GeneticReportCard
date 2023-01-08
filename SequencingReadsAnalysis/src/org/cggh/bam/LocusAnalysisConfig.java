@@ -23,7 +23,7 @@ public abstract class LocusAnalysisConfig extends BaseAnalysisConfig {
 		
 		maxReadMismatches  = this.getIntProperty(propPrefix+PROP_MAX_READ_MISMATCHES, DEFAULT_MAX_READ_MISMATCHES);	
 		maxIndelSize       = this.getIntProperty(propPrefix+PROP_MAX_INDEL_SIZE,      0);	
-		useBamAlignment = useBamAlignment;
+		this.useBamAlignment = useBamAlignment;
 
 		loci = parseLocusConfig ();
 		analyzeUnmappedReads = false;
