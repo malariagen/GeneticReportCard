@@ -2,8 +2,6 @@ package org.cggh.common.textStore;
 
 import java.io.*;
 
-import org.cggh.common.textStore.TextStore;
-
 
 public abstract class OutputTextStore extends TextStore {
 	

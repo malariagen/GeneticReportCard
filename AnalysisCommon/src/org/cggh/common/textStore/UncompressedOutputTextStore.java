@@ -2,8 +2,6 @@ package org.cggh.common.textStore;
 
 import java.io.*;
 
-import org.cggh.common.textStore.OutputTextStore;
-
 public class UncompressedOutputTextStore extends OutputTextStore {
 	
 	File f = null;

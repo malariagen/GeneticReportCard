@@ -3,8 +3,6 @@ package org.cggh.common.textStore;
 import java.io.*;
 import java.util.zip.GZIPOutputStream;
 
-import org.cggh.common.textStore.OutputTextStore;
-
 public class GzippedOutputTextStore extends OutputTextStore {
 	
 	private File f = null;
