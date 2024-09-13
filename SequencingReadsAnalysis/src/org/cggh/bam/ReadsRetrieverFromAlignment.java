@@ -76,13 +76,16 @@ public class ReadsRetrieverFromAlignment implements ReadsRetriever {
 		
 		int seqIndex = samReader.getFileHeader().getSequenceIndex(chrName);
 		while (seqIndex < 0) {
-		    // Special case for mitochondrial sequence which is sometimes encoded under a different ID.
+		    /*
+			// Special case for mitochondrial sequence which is sometimes encoded under a different ID.
 			if ("Pf_M76611".equals(chrName)) {
 				chrName = "M76611";
+			    seqIndex = samReader.getFileHeader().getSequenceIndex(chrName);
 			} else {
 				throw new AnalysisException("At locus"+locus.getName()+" could not find chromosome "+chrName+" in the alignment.");
 			}
-			seqIndex = samReader.getFileHeader().getSequenceIndex(chrName);
+			*/
+			throw new AnalysisException("At locus"+locus.getName()+" could not find chromosome "+chrName+" in the alignment for sample "+sample.getName());
 		}
 		
 		SAMRecordIterator it = samReader.query(chrName, readSearchInterval.getStartPos(), readSearchInterval.getStopPos(), true);
