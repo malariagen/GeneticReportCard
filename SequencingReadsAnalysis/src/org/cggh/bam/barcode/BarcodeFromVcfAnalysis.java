@@ -53,7 +53,7 @@ public class BarcodeFromVcfAnalysis extends SampleAnalysis {
 		
 		// Create the VCF reader
 		InputStream vcfInStream = VcfFileUtils.createVcfFileReader (vcfFile);
-		LineReader r = LineReaderUtil.fromBufferedStream(vcfInStream);
+		SynchronousLineReader r = new SynchronousLineReader(vcfInStream);
 		LineIteratorImpl lineIt = new LineIteratorImpl(r);
 		VCFCodec codec = new VCFCodec();
 		

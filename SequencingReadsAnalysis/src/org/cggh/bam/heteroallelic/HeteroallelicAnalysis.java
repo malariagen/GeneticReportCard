@@ -529,7 +529,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 			super.addMessage(TextUtilities.mergeStringLists(sampleLocusNames, msgFields));
 		}
 		
-		public void saveFile (File outFolder) throws AnalysisException {
+		public synchronized void saveFile (File outFolder) throws AnalysisException {
 			String filename = sampleLocusNames[0] + "." + sampleLocusNames[1] + ".messages.tab";
 			saveFile(outFolder, filename);
 		}
@@ -567,7 +567,7 @@ public class HeteroallelicAnalysis extends SampleAnalysis {
 			Sample sample = samples[sIdx];
 			File sampleFolder = getSampleSubfolder(outRootFolder, sample, true);
 			File sampleFile = new File(sampleFolder, String.valueOf(sample.getName()) + "." + locus.getName() + filenameSuffix + ".tab");
-			if (!sampleFile.exists() || !sampleFile.canRead()) {
+			if (!sampleFile.exists() || !sampleFile.canRead() || (sampleFile.length()==0)) {
 				log.warn("Could not access file " + sampleFile.getAbsolutePath() + " - skipping sample.");
 			} else {
 				TableInput tif = new TableInput(sampleFile);

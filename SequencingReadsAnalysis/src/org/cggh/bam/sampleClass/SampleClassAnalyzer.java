@@ -18,10 +18,13 @@ public class SampleClassAnalyzer {
 	
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
+
 	private SampleClassConfig config;
 	private ClassLocus[]      loci;
 	private ClassTarget[]     allTargets;
 	private File              outFolder;
+	private double            minTargetCallProp;
+	private double            minSpecificTargetCallProp;
 
 	private LabelCounterGenotyper genotyper;
 	
@@ -33,6 +36,8 @@ public class SampleClassAnalyzer {
 		this.config = config;
 		this.outFolder = outFolder;
 		this.genotyper = new LabelCounterGenotyper(config);
+		this.minTargetCallProp = config.getMinCalledTargetProp();
+		this.minSpecificTargetCallProp = config.getMinCalledSpecificTargetProp();
 
 		this.loci = (ClassLocus[])config.getLoci();
 		ArrayList<ClassTarget> tList = new ArrayList<ClassTarget>();
@@ -67,9 +72,10 @@ public class SampleClassAnalyzer {
 				
 				// Determine the target genotypes, one per read. These will be objects of a subclass of TargetGenotype.
 				// The ones to be counted are of type ClassTargetGenotype; the others will be errors, low quality or unknown sequences.
-				ClassTargetGenotyper tg = new ClassTargetGenotyper (target);
+				ClassTargetGenotyper tg = new ClassTargetGenotyper (target, config);
 				TargetGenotype[] targetGenos = tg.extractTargetNtGenotypes (sampleReads);
-
+				//outputTargetReadGenos (sample, loci[lIdx], target, targetGenos, sampleReads);
+				
 				// The ClassAllele is the class-named set of sequences that are matched for identifying the class
 				// e.g. Pf@TATT|TAGT is one ClassAllele, where the class label is Pf and the sequences TATT and TAGT.
 				// The alleleCounters will count the reads for each ClassAllele
@@ -111,9 +117,6 @@ public class SampleClassAnalyzer {
 		return call;
 	}
 	
-	static final int MIN_SPECIFIC_TARGET_CALLS = 2;
-	static final int MIN_TARGET_CALLS = 4;
-
 	protected SampleCall callSampleClass (Sample sample, SampleTargetResult[] targetResults) throws AnalysisException, IOException  {
 		
 		// Get the list of sample classes we're trying to assign, and index them with a lookup table
@@ -157,11 +160,13 @@ public class SampleClassAnalyzer {
 		// Do the calling.
 		// Check there are enough targets called, and enough targets where the class is called specifically (i.e. not a promiscuous target allele)
 		String call = null;
+		double minTargetCall         = minTargetCallProp * (double)allTargets.length;
+		double minSpecificTargetCall = minSpecificTargetCallProp * (double)allTargets.length;
 		for (int cIdx = 0; cIdx < classes.length; cIdx++) {
-			boolean hasSpecificCalls = specificAlleleCounts[cIdx] >= MIN_SPECIFIC_TARGET_CALLS;
+			boolean hasSpecificCalls = specificAlleleCounts[cIdx] >= minSpecificTargetCall;
 			if (hasSpecificCalls) {
 				int targetCallCount = specificAlleleCounts[cIdx] + promiscuousAllelesCounts[cIdx];
-				boolean hasEnoughCalls = targetCallCount >= MIN_TARGET_CALLS;
+				boolean hasEnoughCalls = targetCallCount >= minTargetCall;
 				if (hasEnoughCalls) {
 					call = (call == null) ? classes[cIdx] : call+","+classes[cIdx];
 				}
@@ -193,6 +198,18 @@ public class SampleClassAnalyzer {
 				out.close();
 			}
 		}
+	}
+	
+	protected void outputTargetReadGenos (Sample sample, Locus locus, ClassTarget target, TargetGenotype[] targetGenos, Read[] sampleReads) throws AnalysisException, IOException  {
+		String[] headers = {"Read", "Genotype"};
+		TableOutput out = new TableOutput (outFolder, sample.getName()+"_"+locus.getName()+"_"+target.getName()+".readsGenos.txt", headers, 64 * 1024);	
+		
+		for (int aIdx = 0; aIdx < sampleReads.length; aIdx++) {
+			out.newRow();
+			out.appendValue(sampleReads[aIdx].getId());
+			out.appendValue(targetGenos[aIdx].getName());
+		}
+		out.close();
 	}
 	
 }

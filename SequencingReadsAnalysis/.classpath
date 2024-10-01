@@ -3,13 +3,17 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="sandbox"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/AnalysisCommon"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry exported="true" kind="lib" path="lib/htsjdk-2.1.0.jar" sourcepath="D:/MalariaResearch/workspace-legacy/samtools-htsjdk-3ffdb1f/src/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry exported="true" kind="lib" path="lib/ngs-java-1.2.2.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/snappy-java-1.0.3-rc3.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/xz-1.5.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/commons-jexl-2.1.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/commons-compress-1.4.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/apache-ant-1.8.2-bzip2.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/htsjdk-4.1.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

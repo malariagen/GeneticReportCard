@@ -64,7 +64,7 @@ public class SampleBreakpointAnalyzer {
 			
 			// Analyze the reverse complement sequence 
 			Join revJoin = Join.getReverseComplementJoin (readJoin.getType());
-			SAMRecordUtil.reverseComplement(record);
+			record.reverseComplement();
 		    rr = analyzeSequence (record, revJoin);
 		    if (rr != null) {
 		    	rrList.add(rr);

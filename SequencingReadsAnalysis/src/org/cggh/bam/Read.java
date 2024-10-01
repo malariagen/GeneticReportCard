@@ -2,9 +2,7 @@ package org.cggh.bam;
 
 
 public class Read {
-	
-	public static final int MIN_PHRED_SCORE = 20;
-	
+		
 	public static final int MAPPED = 1;
 	public static final int ANCHORED = 2;
 	public static final int UNMAPPED = 3;

@@ -1,5 +1,6 @@
 package org.cggh.bam.sampleClass;
 
+import org.cggh.bam.BaseAnalysisConfig;
 import org.cggh.bam.Read;
 import org.cggh.bam.sampleClass.ClassTarget.*;
 import org.cggh.bam.target.*;
@@ -11,8 +12,8 @@ public class ClassTargetGenotyper extends TargetGenotyper {
 	protected ClassAllele[]         alleles;
 	protected ClassTargetGenotype[] definedGenos;
 	
-	public ClassTargetGenotyper (ClassTarget target) {
-		super(target);
+	public ClassTargetGenotyper (ClassTarget target, BaseAnalysisConfig config) {
+		super(target, config);
 		this.target = target;
 		alleles = target.getAlleles();
 		definedGenos = new ClassTargetGenotype[alleles.length];

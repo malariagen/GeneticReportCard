@@ -1,5 +1,7 @@
 package org.cggh.bam;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.cggh.common.exceptions.*;
 import org.cggh.common.genome.*;
 import htsjdk.samtools.*;
@@ -9,6 +11,8 @@ import java.util.regex.*;
 
 public class ReadsRetrieverFromAlignment implements ReadsRetriever {
 	
+	protected static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
+
 	private Locus[]           loci;
 	private boolean           analyzeUnmappedReads;
 	private int               maxIndelSize;
@@ -28,7 +32,7 @@ public class ReadsRetrieverFromAlignment implements ReadsRetriever {
 		this.analyzeUnmappedReads = config.getAnalyzeUnmappedReads();
 		this.maxIndelSize = config.getMaxIndelSize();
 		
-		// Verify we only have single search intervals for alignmet-based tasks
+		// Verify we only have single search intervals for alignment-based tasks
 		if (useAlignment) {
 			for (int lIdx = 0; lIdx < loci.length; lIdx++) {
 				Locus locus = loci[lIdx];
@@ -63,28 +67,23 @@ public class ReadsRetrieverFromAlignment implements ReadsRetriever {
 		return readLists;
 	}
 	
+	private boolean initialized = false;
+	
 	private void getMappedLocusReads (Sample sample, Locus locus, GenomeRegion readSearchInterval, ArrayList<Read> readsList, boolean useAlignment) throws AnalysisException {
 		SamReader samReader = samReaderFactory.open(sample.getBamFile());
 		String chrName = readSearchInterval.getChromosome();
 
-		/*
-        int refCont = samReader.getFileHeader().getSequenceDictionary().size();
-		for (int i = 0; i < refCont; i++) {
-			System.out.println(samReader.getFileHeader().getSequence(i));
+		if (!initialized) {
+			log.info("Chromosome names from BAM header:");
+	        int refCont = samReader.getFileHeader().getSequenceDictionary().size();
+			for (int i = 0; i < refCont; i++) {
+				log.info(samReader.getFileHeader().getSequence(i));
+			}
+			initialized = true;
 		}
-		*/
 		
 		int seqIndex = samReader.getFileHeader().getSequenceIndex(chrName);
 		while (seqIndex < 0) {
-		    /*
-			// Special case for mitochondrial sequence which is sometimes encoded under a different ID.
-			if ("Pf_M76611".equals(chrName)) {
-				chrName = "M76611";
-			    seqIndex = samReader.getFileHeader().getSequenceIndex(chrName);
-			} else {
-				throw new AnalysisException("At locus"+locus.getName()+" could not find chromosome "+chrName+" in the alignment.");
-			}
-			*/
 			throw new AnalysisException("At locus"+locus.getName()+" could not find chromosome "+chrName+" in the alignment for sample "+sample.getName());
 		}
 		
@@ -190,7 +189,7 @@ public class ReadsRetrieverFromAlignment implements ReadsRetriever {
 			SAMRecord record = it.next();
 			boolean matched = matchUnmappedRead (record, loci, mappedReadLists);
 			if (!matched) {
-				SAMRecordUtil.reverseComplement(record);
+				record.reverseComplement();
 				matched = matchUnmappedRead (record, loci, mappedReadLists);
 			}
 		}
@@ -215,9 +214,6 @@ public class ReadsRetrieverFromAlignment implements ReadsRetriever {
 	private boolean matchReadAtLocus (SAMRecord record, Locus locus, ArrayList<Read> mappedReadList) throws AnalysisException {
 		// Does the read contain an anchor?
 		String readSequence = record.getReadString();
-		//if (readSequence.contains("ACCATCCAATTTGATTGGGAAT")) {
-		//	System.out.println("Here");
-		//}
 		Anchor[] anchors = locus.getAnchors();
 		for (int aIdx = 0; aIdx < anchors.length; aIdx++) {
 			Matcher m = anchors[aIdx].getRegex().matcher(readSequence);

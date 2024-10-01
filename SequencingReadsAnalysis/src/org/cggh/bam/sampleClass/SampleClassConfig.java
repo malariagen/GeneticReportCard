@@ -10,11 +10,22 @@ public class SampleClassConfig extends TargetAnalysisConfig {
 	
 	public static final String PROP_PREFIX = "sampleClass.";
 	
-	protected String[]           classes;
+	public static final double DEFAULT_MIN_CALLED_TARGET = 0.5;
+	public static final double DEFAULT_MIN_CALLED_SPECIFIC_TARGET = 0.25;
+
+	public static final String PROP_CLASSES                         = "classes";
+	public static final String PROP_MIN_CALLED_TARGET_PROP          = "minCalledTargetProp";
+	public static final String PROP_MIN_CALLED_SPECIFIC_TARGET_PROP = "minCalledSpecificTargetProp";
+	
+	protected String[] classes;
+	protected double   minCalledTargetProp;
+	protected double   minCalledSpecificTargetProp;
 
 	public SampleClassConfig(File configFile) throws AnalysisException {
 		super(configFile, PROP_PREFIX, false);
-		classes = getStringListProperty(propPrefix+"classes");
+		classes = getStringListProperty(propPrefix+PROP_CLASSES);
+		minCalledTargetProp = getDoubleProperty(propPrefix+PROP_MIN_CALLED_TARGET_PROP, DEFAULT_MIN_CALLED_TARGET);
+		minCalledSpecificTargetProp = getDoubleProperty(propPrefix+PROP_MIN_CALLED_SPECIFIC_TARGET_PROP, DEFAULT_MIN_CALLED_SPECIFIC_TARGET);
 	}
 	
 	public ClassLocus[] getLoci () {
@@ -25,6 +36,20 @@ public class SampleClassConfig extends TargetAnalysisConfig {
 		return classes;
 	}
 
+	public double getMinCalledTargetProp() {
+		return minCalledTargetProp;
+	}
+	
+	public double getMinCalledSpecificTargetProp() {
+		return minCalledSpecificTargetProp;
+	}
+	
+	public String getPrintableDisplay() {
+	    return super.getPrintableDisplay() +
+		     "\nminCalledTargetProp = " + getMinCalledTargetProp() +
+		     "\nminCalledSpecificTargetProp = " + getMinCalledSpecificTargetProp() ;    		
+    }
+	
 	@Override
 	public ClassLocus[] parseLocusConfig () throws AnalysisException {
 		Locus[] baseLoci = super.parseLocusConfig();

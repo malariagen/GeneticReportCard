@@ -9,9 +9,11 @@ import org.cggh.common.sequence.*;
 public class TargetGenotyper {
 	
 	protected Target target;
+	protected int    minBaseQScore;
 	
-	public TargetGenotyper (Target target) {
+	public TargetGenotyper (Target target, BaseAnalysisConfig config) {
 		this.target = target;
+		this.minBaseQScore = config.getMinBaseQScore();
 	}
 	
 	public TargetGenotype[] extractTargetGenotypes (Read[] reads) {
@@ -23,6 +25,11 @@ public class TargetGenotyper {
 		nextRead:
 		for (int rIdx = 0; rIdx < reads.length; rIdx++) {
 			Read r = reads[rIdx];
+			/*
+			if (r.getId().equals("HS26_13224:3:2101:8581:85475#47")) {
+				System.out.println("Here");
+			}
+			*/
 			int rStartPos = r.getStartPos();
 			int rEndPos = rStartPos + r.getSequence().length() - 1;
 			
@@ -52,7 +59,7 @@ public class TargetGenotyper {
 						minQ = q;
 					}
 				}
-				if (minQ < Read.MIN_PHRED_SCORE) {
+				if (minQ < minBaseQScore) {
 					targetGenos[rIdx] = new TargetGenotype.LowQualityTargetGenotype();
 					continue nextRead;
 				}

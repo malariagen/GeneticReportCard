@@ -59,7 +59,7 @@ public class SampleCodonAnalyzer {
 			// Genotype the targets for each read
 			for (int tIdx = 0; tIdx < targets.length; tIdx++) {
 				AlignmentTarget target = (AlignmentTarget)targets[tIdx];
-				TargetGenotyper tg = new TargetGenotyper (target);
+				TargetGenotyper tg = new TargetGenotyper (target, config);
 				TargetGenotype[] targetGenos = tg.extractTargetGenotypes (sampleReads);
 				
 				LabelCounters ntAlleleCounters = new LabelCounters();
