@@ -9,9 +9,9 @@ public class Genotyper {
 	protected double minAlleleProp;
 	
 	public Genotyper(BaseAnalysisConfig config) {
-	    this.minCallReads = config.getMinCallReadCount();
+	    this.minCallReads   = config.getMinCallReadCount();
 		this.minAlleleReads = config.getMinAlleleReadCount();
-		this.minAlleleProp = config.getMinAlleleReadProp();
+		this.minAlleleProp  = config.getMinAlleleReadProp();
 	}
 
 	public boolean hasSufficientReads (int totalReads) {

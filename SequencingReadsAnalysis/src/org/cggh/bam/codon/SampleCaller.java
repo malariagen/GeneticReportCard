@@ -10,10 +10,10 @@ import java.util.*;
 
 public class SampleCaller {
 	
-	private LabelCounterGenotyper genotyper;
+	private Genotyper genotyper;
 	
 	public SampleCaller(BaseAnalysisConfig config) {
-		genotyper = new LabelCounterGenotyper(config);
+		genotyper = new Genotyper(config);
 	}
 
 	public SampleCall callSample (AlignmentTarget target, LabelCounters ntAlleleCounters) {

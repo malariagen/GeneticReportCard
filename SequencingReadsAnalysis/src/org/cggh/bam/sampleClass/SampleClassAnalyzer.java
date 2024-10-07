@@ -18,15 +18,14 @@ public class SampleClassAnalyzer {
 	
 	private static Log log = LogFactory.getLog(org.cggh.common.util.ClassUtilities.getCurrentClassName());
 	
-
 	private SampleClassConfig config;
+	private Genotyper         genotyper;
 	private ClassLocus[]      loci;
 	private ClassTarget[]     allTargets;
 	private File              outFolder;
 	private double            minTargetCallProp;
 	private double            minSpecificTargetCallProp;
 
-	private LabelCounterGenotyper genotyper;
 	
 	/* ==========================================================
 	 * Invocation: single sample
@@ -35,7 +34,7 @@ public class SampleClassAnalyzer {
 	public SampleClassAnalyzer (SampleClassConfig config, File outFolder) throws AnalysisException  {
 		this.config = config;
 		this.outFolder = outFolder;
-		this.genotyper = new LabelCounterGenotyper(config);
+		this.genotyper = new Genotyper(config);
 		this.minTargetCallProp = config.getMinCalledTargetProp();
 		this.minSpecificTargetCallProp = config.getMinCalledSpecificTargetProp();
 
@@ -104,21 +103,21 @@ public class SampleClassAnalyzer {
 				for (int aIdx = 0; aIdx < alleles.length; aIdx++) {
 					totalReads += alleleCounters[aIdx].getCount();
 				}
+				boolean isValidCall = genotyper.hasSufficientReads(totalReads);
+				
 				for (int aIdx = 0; aIdx < alleles.length; aIdx++) {
-					boolean isValidAllele = genotyper.isValidAllele(alleleCounters[aIdx].getCount(), totalReads);
-					classTargetCalls[aIdx] = isValidAllele ? alleles[aIdx].getName() : "-";
+					if (isValidCall) {
+						boolean isValidAllele = genotyper.isValidAllele(alleleCounters[aIdx].getCount(), totalReads);
+						classTargetCalls[aIdx] = isValidAllele ? alleles[aIdx].getName() : "-";
+					} else {
+						classTargetCalls[aIdx] = "-";
+					}
 				}
 				targetResults[tarIdx++] = new SampleTargetResult(target, classTargetCalls, alleleCounters, unlistedAlleleCounters.getSortedCounters());
 			}
 		}
 		
 		// Make a call based on the target results
-		SampleCall call = callSampleClass (sample, targetResults);
-		return call;
-	}
-	
-	protected SampleCall callSampleClass (Sample sample, SampleTargetResult[] targetResults) throws AnalysisException, IOException  {
-		
 		// Get the list of sample classes we're trying to assign, and index them with a lookup table
 		String[] classes = config.getClasses();
 		HashMap<String,Integer> classesIdxTable = new HashMap<String,Integer>();
@@ -163,8 +162,8 @@ public class SampleClassAnalyzer {
 		double minTargetCall         = minTargetCallProp * (double)allTargets.length;
 		double minSpecificTargetCall = minSpecificTargetCallProp * (double)allTargets.length;
 		for (int cIdx = 0; cIdx < classes.length; cIdx++) {
-			boolean hasSpecificCalls = specificAlleleCounts[cIdx] >= minSpecificTargetCall;
-			if (hasSpecificCalls) {
+			boolean hasEnoughSpecificCalls = specificAlleleCounts[cIdx] >= minSpecificTargetCall;
+			if (hasEnoughSpecificCalls) {
 				int targetCallCount = specificAlleleCounts[cIdx] + promiscuousAllelesCounts[cIdx];
 				boolean hasEnoughCalls = targetCallCount >= minTargetCall;
 				if (hasEnoughCalls) {
@@ -175,7 +174,6 @@ public class SampleClassAnalyzer {
 		if (call == null) {
 			call = "-";
 		}
-		
 		return new SampleCall(sample, call, targetResults);
 	}
 
