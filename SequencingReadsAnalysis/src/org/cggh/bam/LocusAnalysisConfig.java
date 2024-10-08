@@ -59,8 +59,7 @@ public abstract class LocusAnalysisConfig extends BaseAnalysisConfig {
 	    return super.getPrintableDisplay() +
 	         "\nanalyzeUnmappedReads = " + getAnalyzeUnmappedReads() +
 		     "\nmaxReadMismatches = "    + getMaxReadMismatches() +
-		     "\nmaxIndelSize = "         + getMaxIndelSize() +
-             "\nuseBamAlignment = "      + getUseBamAlignment();    		
+		     "\nmaxIndelSize = "         + getMaxIndelSize();    		
     }
 	
 	public Locus[] parseLocusConfig () throws AnalysisException {
